@@ -4,10 +4,16 @@ import (
 	"log"
 
 	"github.com/learies/goShortener/internal/app"
+	"github.com/learies/goShortener/internal/config"
 )
 
 func main() {
-	application, err := app.NewApp()
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("Error creating config: %v", err)
+	}
+
+	application, err := app.NewApp(cfg)
 	if err != nil {
 		log.Fatalf("Error creating app: %v", err)
 	}
