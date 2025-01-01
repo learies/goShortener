@@ -1,10 +1,10 @@
 package app
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/learies/goShortener/internal/config"
+	"github.com/learies/goShortener/internal/config/logger"
 )
 
 type App struct {
@@ -18,6 +18,6 @@ func NewApp(cfg *config.Config) (*App, error) {
 }
 
 func (a *App) Run() error {
-	log.Println("Starting server on:", a.Config.Address)
+	logger.Log.Info("Starting server on", "address", a.Config.Address)
 	return http.ListenAndServe(a.Config.Address, nil)
 }
