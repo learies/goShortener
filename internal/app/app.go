@@ -16,7 +16,7 @@ type App struct {
 func NewApp(cfg *config.Config) (*App, error) {
 	router := router.NewRouter()
 
-	if err := router.Routes(); err != nil {
+	if err := router.Routes(cfg); err != nil {
 		logger.Log.Error("Failed to setup routes", "error", err)
 		return nil, err
 	}

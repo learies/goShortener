@@ -4,9 +4,15 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/learies/goShortener/internal/services"
 )
 
-func (h *Handler) CreateShortLink() http.HandlerFunc {
+func checkOriginalURL(originalURL string) bool {
+	return strings.HasPrefix(originalURL, "http://") || strings.HasPrefix(originalURL, "https://")
+}
+
+func (h *Handler) CreateShortLink(baseURL string, shortener *services.URLShortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -15,13 +21,16 @@ func (h *Handler) CreateShortLink() http.HandlerFunc {
 		}
 
 		originalURL := string(body)
-		if !strings.HasPrefix(originalURL, "http://") && !strings.HasPrefix(originalURL, "https://") {
+		if !checkOriginalURL(originalURL) {
 			http.Error(w, "Invalid URL format", http.StatusBadRequest)
 			return
 		}
 
+		shortURL := shortener.GenerateShortURL(originalURL)
+		shortenedURL := baseURL + "/" + shortURL
+
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(originalURL))
+		w.Write([]byte(shortenedURL))
 	}
 }
