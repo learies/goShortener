@@ -23,13 +23,12 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) Routes(cfg *config.Config) error {
+func (r *Router) Routes(cfg *config.Config, urlShortener services.Shortener) error {
 	routes := r.Mux
 	routes.Use(middleware.Recoverer)
 	routes.Use(internalMiddleware.WithLogging)
 
 	handler := handler.NewHandler()
-	urlShortener := services.NewURLShortener()
 
 	routes.Post("/", handler.CreateShortLink(cfg.BaseURL, urlShortener))
 

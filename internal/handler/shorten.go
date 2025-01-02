@@ -12,7 +12,7 @@ func checkOriginalURL(originalURL string) bool {
 	return strings.HasPrefix(originalURL, "http://") || strings.HasPrefix(originalURL, "https://")
 }
 
-func (h *Handler) CreateShortLink(baseURL string, shortener *services.URLShortener) http.HandlerFunc {
+func (h *Handler) CreateShortLink(baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
