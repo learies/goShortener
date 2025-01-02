@@ -11,6 +11,7 @@ import (
 	"github.com/learies/goShortener/internal/handler"
 	internalMiddleware "github.com/learies/goShortener/internal/middleware"
 	"github.com/learies/goShortener/internal/services"
+	"github.com/learies/goShortener/internal/store"
 )
 
 type Router struct {
@@ -23,14 +24,15 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) Routes(cfg *config.Config, urlShortener services.Shortener) error {
+func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener services.Shortener) error {
 	routes := r.Mux
 	routes.Use(middleware.Recoverer)
 	routes.Use(internalMiddleware.WithLogging)
 
 	handler := handler.NewHandler()
 
-	routes.Post("/", handler.CreateShortLink(cfg.BaseURL, urlShortener))
+	routes.Post("/", handler.CreateShortLink(store, cfg.BaseURL, urlShortener))
+	routes.Get("/{shortURL}", handler.GetOriginalURL(store))
 
 	return nil
 }

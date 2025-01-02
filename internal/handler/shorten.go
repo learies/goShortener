@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/learies/goShortener/internal/services"
+	"github.com/learies/goShortener/internal/store"
 )
 
 func checkOriginalURL(originalURL string) bool {
 	return strings.HasPrefix(originalURL, "http://") || strings.HasPrefix(originalURL, "https://")
 }
 
-func (h *Handler) CreateShortLink(baseURL string, shortener services.Shortener) http.HandlerFunc {
+func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -29,8 +30,30 @@ func (h *Handler) CreateShortLink(baseURL string, shortener services.Shortener) 
 		shortURL := shortener.GenerateShortURL(originalURL)
 		shortenedURL := baseURL + "/" + shortURL
 
+		err = store.Add(shortURL, originalURL)
+		if err != nil {
+			http.Error(w, "can't add to store", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(shortenedURL))
+	}
+}
+
+func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		shortURL := strings.TrimPrefix(r.URL.Path, "/")
+
+		originalURL, err := store.Get(shortURL)
+		if err != nil {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		w.Write([]byte(originalURL))
 	}
 }

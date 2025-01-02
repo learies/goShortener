@@ -7,6 +7,7 @@ import (
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/router"
 	"github.com/learies/goShortener/internal/services"
+	"github.com/learies/goShortener/internal/store"
 )
 
 type App struct {
@@ -17,9 +18,15 @@ type App struct {
 func NewApp(cfg *config.Config) (*App, error) {
 	router := router.NewRouter()
 
+	store, err := store.NewStore()
+	if err != nil {
+		logger.Log.Error("Failed to setup store", "error", err)
+		return nil, err
+	}
+
 	urlShortener := services.NewURLShortener()
 
-	if err := router.Routes(cfg, urlShortener); err != nil {
+	if err := router.Routes(cfg, store, urlShortener); err != nil {
 		logger.Log.Error("Failed to setup routes", "error", err)
 		return nil, err
 	}
