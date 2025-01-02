@@ -19,6 +19,7 @@ func TestMainHandler(t *testing.T) {
 
 	mockShortener := &MockShortener{}
 
+	// Test case 1: Ensure the creating a short link
 	t.Run("CreateShortLink", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/", strings.NewReader("http://example.com"))
 		w := httptest.NewRecorder()
