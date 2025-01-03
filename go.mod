@@ -1,6 +1,6 @@
 module github.com/learies/goShortener
 
-go 1.23.4
+go 1.22.10
 
 require (
 	github.com/go-chi/chi v1.5.5
