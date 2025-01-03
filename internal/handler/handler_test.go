@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/learies/goShortener/internal/store/filestore"
 )
 
 type MockShortener struct{}
@@ -68,6 +70,27 @@ func TestMainHandler(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := "http://example.com"
+		assert.Equal(t, expected, string(body))
+	})
+
+	t.Run("GetOriginalURLNotFound", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/short123", nil)
+		recorder := httptest.NewRecorder()
+
+		mockStore.GetFunc = func(shortURL string) (string, error) {
+			return "", filestore.ErrURLNotFound
+		}
+
+		handler.GetOriginalURL(mockStore)(recorder, req)
+
+		result := recorder.Result()
+
+		assert.Equal(t, http.StatusNotFound, result.StatusCode)
+
+		body, err := io.ReadAll(result.Body)
+		assert.NoError(t, err)
+
+		expected := "URL not found\n"
 		assert.Equal(t, expected, string(body))
 	})
 }
