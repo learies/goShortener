@@ -44,6 +44,7 @@ func TestMainHandler(t *testing.T) {
 		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
+		defer result.Body.Close()
 		assert.Equal(t, http.StatusCreated, result.StatusCode)
 
 		contentType := result.Header.Get("Content-Type")
@@ -65,6 +66,7 @@ func TestMainHandler(t *testing.T) {
 		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
+		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
 	})
@@ -80,6 +82,7 @@ func TestMainHandler(t *testing.T) {
 		handler.GetOriginalURL(mockStore)(recorder, req)
 
 		result := recorder.Result()
+		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode)
 		assert.Equal(t, "https://practicum.yandex.ru/", result.Header.Get("Location"))
@@ -96,6 +99,7 @@ func TestMainHandler(t *testing.T) {
 		handler.GetOriginalURL(mockStore)(recorder, req)
 
 		result := recorder.Result()
+		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusNotFound, result.StatusCode)
 
