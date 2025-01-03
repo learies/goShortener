@@ -15,7 +15,7 @@ import (
 type MockShortener struct{}
 
 func (m *MockShortener) GenerateShortURL(originalURL string) string {
-	return "short123"
+	return "EwHXdJfB"
 }
 
 type MockStore struct {
@@ -36,28 +36,45 @@ func TestMainHandler(t *testing.T) {
 	mockShortener := &MockShortener{}
 
 	t.Run("CreateShortLink", func(t *testing.T) {
-		reqBody := strings.NewReader("http://example.com")
+		reqBody := strings.NewReader("https://practicum.yandex.ru/")
 		req := httptest.NewRequest(http.MethodPost, "/", reqBody)
+		req.Header.Set("Content-Type", "text/plain")
 		recorder := httptest.NewRecorder()
 
-		handler.CreateShortLink(mockStore, "http://localhost", mockShortener)(recorder, req)
+		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
 		assert.Equal(t, http.StatusCreated, result.StatusCode)
 
+		contentType := result.Header.Get("Content-Type")
+		assert.Equal(t, "text/plain", contentType)
+
 		body, err := io.ReadAll(result.Body)
 		assert.NoError(t, err)
 
-		expected := "http://localhost/short123"
+		expected := "http://localhost:8080/EwHXdJfB"
 		assert.Equal(t, expected, string(body))
 	})
 
+	t.Run("CreateShortLinkBadRequest", func(t *testing.T) {
+		reqBody := strings.NewReader("{ bad json")
+		req := httptest.NewRequest(http.MethodPost, "/", reqBody)
+		req.Header.Set("Content-Type", "text/plain")
+		recorder := httptest.NewRecorder()
+
+		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+
+		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
+	})
+
 	t.Run("GetOriginalURL", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/short123", nil)
+		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
 		mockStore.GetFunc = func(shortURL string) (string, error) {
-			return "http://example.com", nil
+			return "https://practicum.yandex.ru/", nil
 		}
 
 		handler.GetOriginalURL(mockStore)(recorder, req)
@@ -65,16 +82,11 @@ func TestMainHandler(t *testing.T) {
 		result := recorder.Result()
 
 		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode)
-
-		body, err := io.ReadAll(result.Body)
-		assert.NoError(t, err)
-
-		expected := "http://example.com"
-		assert.Equal(t, expected, string(body))
+		assert.Equal(t, "https://practicum.yandex.ru/", result.Header.Get("Location"))
 	})
 
 	t.Run("GetOriginalURLNotFound", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/short123", nil)
+		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
 		mockStore.GetFunc = func(shortURL string) (string, error) {
