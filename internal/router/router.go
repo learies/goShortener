@@ -28,12 +28,14 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	routes := r.Mux
 	routes.Use(middleware.Recoverer)
 	routes.Use(internalMiddleware.WithLogging)
+	routes.Use(internalMiddleware.GzipMiddleware)
 
 	handler := handler.NewHandler()
 
 	routes.Post("/", handler.CreateShortLink(store, cfg.BaseURL, urlShortener))
 	routes.Get("/{shortURL}", handler.GetOriginalURL(store))
 	routes.Post("/api/shorten", handler.ShortenLink(store, cfg.BaseURL, urlShortener))
+	routes.MethodNotAllowed(methodNotAllowedHandler)
 
 	return nil
 }
