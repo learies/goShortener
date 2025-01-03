@@ -52,8 +52,7 @@ func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Location", originalURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
-		w.Write([]byte(originalURL))
 	}
 }
