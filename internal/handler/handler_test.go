@@ -109,4 +109,41 @@ func TestMainHandler(t *testing.T) {
 		expected := "URL not found\n"
 		assert.Equal(t, expected, string(body))
 	})
+
+	t.Run("ShortenLink", func(t *testing.T) {
+		reqBody := `{"url":"https://practicum.yandex.ru/"}`
+		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		handler.ShortenLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusCreated, result.StatusCode)
+
+		contentType := result.Header.Get("Content-Type")
+		assert.Equal(t, "application/json", contentType)
+
+		body, err := io.ReadAll(result.Body)
+		assert.NoError(t, err)
+
+		expected := `{"result":"http://localhost:8080/EwHXdJfB"}`
+		assert.JSONEq(t, expected, string(body))
+	})
+
+	t.Run("ShortenLinkBadRequest", func(t *testing.T) {
+		reqBody := `{"bad json"}`
+		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		handler.ShortenLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
+	})
 }
