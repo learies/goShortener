@@ -21,3 +21,8 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+.env
+
+shortenertestbeta-darwin-arm64
+statictest-darwin-arm64
