@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type MockShortener struct{}
@@ -14,14 +16,16 @@ func (m *MockShortener) GenerateShortURL(originalURL string) string {
 	return "short123"
 }
 
-type MockStore struct{}
+type MockStore struct {
+	GetFunc func(shortURL string) (string, error)
+}
 
 func (m *MockStore) Add(shortURL, originalURL string) error {
 	return nil
 }
 
 func (m *MockStore) Get(shortURL string) (string, error) {
-	return "http://example.com", nil
+	return m.GetFunc(shortURL)
 }
 
 func TestMainHandler(t *testing.T) {
@@ -37,42 +41,33 @@ func TestMainHandler(t *testing.T) {
 		handler.CreateShortLink(mockStore, "http://localhost", mockShortener)(recorder, req)
 
 		result := recorder.Result()
-
-		if result.StatusCode != http.StatusCreated {
-			t.Errorf("Expected status Created, got %v", result.Status)
-		}
+		assert.Equal(t, http.StatusCreated, result.StatusCode)
 
 		body, err := io.ReadAll(result.Body)
-		if err != nil {
-			t.Fatalf("Failed to read response body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		expected := "http://localhost/short123"
-		if string(body) != expected {
-			t.Errorf("Expected body %q, got %q", expected, string(body))
-		}
+		assert.Equal(t, expected, string(body))
 	})
 
 	t.Run("GetOriginalURL", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/short123", nil)
 		recorder := httptest.NewRecorder()
 
+		mockStore.GetFunc = func(shortURL string) (string, error) {
+			return "http://example.com", nil
+		}
+
 		handler.GetOriginalURL(mockStore)(recorder, req)
 
 		result := recorder.Result()
 
-		if result.StatusCode != http.StatusTemporaryRedirect {
-			t.Errorf("Expected status Temporary Redirect, got %v", result.Status)
-		}
+		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode)
 
 		body, err := io.ReadAll(result.Body)
-		if err != nil {
-			t.Fatalf("Failed to read response body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		expected := "http://example.com"
-		if string(body) != expected {
-			t.Errorf("Expected body %q, got %q", expected, string(body))
-		}
+		assert.Equal(t, expected, string(body))
 	})
 }
