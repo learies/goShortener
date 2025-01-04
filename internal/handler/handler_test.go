@@ -14,8 +14,8 @@ import (
 
 type MockShortener struct{}
 
-func (m *MockShortener) GenerateShortURL(originalURL string) string {
-	return "EwHXdJfB"
+func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
+	return "EwHXdJfB", nil
 }
 
 type MockStore struct {

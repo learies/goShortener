@@ -3,11 +3,15 @@ package services
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 )
+
+// ErrEmptyURL ошибка, возникающая при попытке сократить пустой URL
+var ErrEmptyURL = errors.New("empty URL")
 
 // Shortener определяет метод для генерации сокращённых URL
 type Shortener interface {
-	GenerateShortURL(url string) string
+	GenerateShortURL(url string) (string, error)
 }
 
 // URLShortener структура
@@ -19,9 +23,9 @@ func NewURLShortener() *URLShortener {
 }
 
 // GenerateShortURL генерирует сокращённый URL, используя SHA256 и base64
-func (us *URLShortener) GenerateShortURL(url string) string {
+func (us *URLShortener) GenerateShortURL(url string) (string, error) {
 	if url == "" {
-		return ""
+		return "", ErrEmptyURL
 	}
 
 	hasher := sha256.New()
@@ -29,5 +33,5 @@ func (us *URLShortener) GenerateShortURL(url string) string {
 	hash := hasher.Sum(nil)
 
 	shortURL := base64.URLEncoding.EncodeToString(hash)[:8]
-	return shortURL
+	return shortURL, nil
 }
