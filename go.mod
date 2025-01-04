@@ -4,6 +4,7 @@ go 1.22.5
 
 require (
 	github.com/go-chi/chi v1.5.5
+	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/stretchr/testify v1.10.0
 )
 
