@@ -35,6 +35,12 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 			return
 		}
 
+		err = store.Add(shortURL, originalURL)
+		if err != nil {
+			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			return
+		}
+
 		shortenedURL := baseURL + "/" + shortURL
 
 		w.Header().Set("Content-Type", "text/plain")
@@ -84,6 +90,13 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			http.Error(w, "can't generate short URL", http.StatusInternalServerError)
 			return
 		}
+
+		err = store.Add(shortURL, originalURL)
+		if err != nil {
+			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			return
+		}
+
 		shortenedURL := baseURL + "/" + shortURL
 
 		var shortenResponse models.ShortenResponse
