@@ -30,6 +30,10 @@ func (m *MockStore) Get(shortURL string) (string, error) {
 	return m.GetFunc(shortURL)
 }
 
+func (m *MockStore) Ping() error {
+	return nil
+}
+
 func TestMainHandler(t *testing.T) {
 	handler := NewHandler()
 	mockStore := &MockStore{}

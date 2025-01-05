@@ -58,7 +58,7 @@ func (fs *FileStore) Get(shortURL string) (string, error) {
 }
 
 func (fs *FileStore) SaveToFile() error {
-	file, err := os.Create(fs.FilePath)
+	file, err := os.OpenFile(fs.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -106,4 +106,9 @@ func (fs *FileStore) LoadFromFile() error {
 	logger.Log.Info("Loaded from file", "URLMapping", fs.URLMapping)
 
 	return nil
+}
+
+func (fs *FileStore) Ping() error {
+	err := errors.New("unable to access the store")
+	return err
 }
