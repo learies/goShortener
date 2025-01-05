@@ -58,7 +58,7 @@ func (fs *FileStore) Get(shortURL string) (string, error) {
 }
 
 func (fs *FileStore) SaveToFile() error {
-	file, err := os.Create(fs.FilePath)
+	file, err := os.OpenFile(fs.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
