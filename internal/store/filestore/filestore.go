@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -20,7 +21,7 @@ type FileStore struct {
 	FilePath   string
 }
 
-func (fs *FileStore) Add(shortURL, originalURL string) error {
+func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -35,7 +36,7 @@ func (fs *FileStore) Add(shortURL, originalURL string) error {
 	return nil
 }
 
-func (fs *FileStore) Get(shortURL string) (string, error) {
+func (fs *FileStore) Get(ctx context.Context, shortURL string) (string, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
