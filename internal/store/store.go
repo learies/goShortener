@@ -1,6 +1,8 @@
 package store
 
 import (
+	"context"
+
 	"github.com/learies/goShortener/internal/config"
 	"github.com/learies/goShortener/internal/config/database"
 	"github.com/learies/goShortener/internal/store/dbstore"
@@ -8,8 +10,8 @@ import (
 )
 
 type Store interface {
-	Add(shortURL, originalURL string) error
-	Get(shortURL string) (string, error)
+	Add(ctx context.Context, shortURL, originalURL string) error
+	Get(ctx context.Context, shortURL string) (string, error)
 	Ping() error
 }
 

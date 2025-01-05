@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
@@ -18,6 +20,9 @@ func checkOriginalURL(originalURL string) bool {
 
 func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "can't read body", http.StatusInternalServerError)
@@ -36,7 +41,7 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 			return
 		}
 
-		err = store.Add(shortURL, originalURL)
+		err = store.Add(ctx, shortURL, originalURL)
 		if err != nil {
 			http.Error(w, "can't save short URL", http.StatusInternalServerError)
 			return
@@ -52,9 +57,12 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 
 func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
 		shortURL := strings.TrimPrefix(r.URL.Path, "/")
 
-		originalURL, err := store.Get(shortURL)
+		originalURL, err := store.Get(ctx, shortURL)
 		if err != nil {
 			http.Error(w, "URL not found", http.StatusNotFound)
 			return
@@ -67,6 +75,9 @@ func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 
 func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "can't read body", http.StatusInternalServerError)
@@ -92,7 +103,7 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			return
 		}
 
-		err = store.Add(shortURL, originalURL)
+		err = store.Add(ctx, shortURL, originalURL)
 		if err != nil {
 			http.Error(w, "can't save short URL", http.StatusInternalServerError)
 			return

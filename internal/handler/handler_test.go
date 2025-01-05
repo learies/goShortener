@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,15 +20,15 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 }
 
 type MockStore struct {
-	GetFunc func(shortURL string) (string, error)
+	GetFunc func(ctx context.Context, shortURL string) (string, error)
 }
 
-func (m *MockStore) Add(shortURL, originalURL string) error {
+func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string) error {
 	return nil
 }
 
-func (m *MockStore) Get(shortURL string) (string, error) {
-	return m.GetFunc(shortURL)
+func (m *MockStore) Get(ctx context.Context, shortURL string) (string, error) {
+	return m.GetFunc(ctx, shortURL)
 }
 
 func (m *MockStore) Ping() error {
@@ -79,7 +80,7 @@ func TestMainHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore.GetFunc = func(shortURL string) (string, error) {
+		mockStore.GetFunc = func(ctx context.Context, shortURL string) (string, error) {
 			return "https://practicum.yandex.ru/", nil
 		}
 
@@ -96,7 +97,7 @@ func TestMainHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore.GetFunc = func(shortURL string) (string, error) {
+		mockStore.GetFunc = func(ctx context.Context, shortURL string) (string, error) {
 			return "", filestore.ErrURLNotFound
 		}
 
