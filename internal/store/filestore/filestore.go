@@ -26,7 +26,10 @@ func (fs *FileStore) Add(shortURL, originalURL string) error {
 
 	fs.URLMapping[shortURL] = originalURL
 
-	fs.SaveToFile()
+	if fs.FilePath != "" {
+		fs.SaveToFile()
+	}
+
 	logger.Log.Info("Added to store", "shortURL", shortURL, "originalURL", originalURL)
 
 	return nil
@@ -36,10 +39,12 @@ func (fs *FileStore) Get(shortURL string) (string, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
-	err := fs.LoadFromFile(fs.FilePath)
-	if err != nil {
-		logger.Log.Error("Failed to load from file", "error", err)
-		return "", err
+	if fs.FilePath != "" {
+		err := fs.LoadFromFile()
+		if err != nil {
+			logger.Log.Error("Failed to load from file", "error", err)
+			return "", err
+		}
 	}
 
 	originalURL, ok := fs.URLMapping[shortURL]
@@ -53,9 +58,6 @@ func (fs *FileStore) Get(shortURL string) (string, error) {
 }
 
 func (fs *FileStore) SaveToFile() error {
-	fs.mu.Lock()
-	defer fs.mu.Unlock()
-
 	file, err := os.Create(fs.FilePath)
 	if err != nil {
 		return err
@@ -80,8 +82,8 @@ func (fs *FileStore) SaveToFile() error {
 	return nil
 }
 
-func (fs *FileStore) LoadFromFile(filePath string) error {
-	file, err := os.Open(filePath)
+func (fs *FileStore) LoadFromFile() error {
+	file, err := os.Open(fs.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
