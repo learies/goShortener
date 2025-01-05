@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/gofrs/uuid/v5"
+	"github.com/google/uuid"
 )
 
 type ShortenRequest struct {
