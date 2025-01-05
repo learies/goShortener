@@ -108,7 +108,7 @@ func (fs *FileStore) LoadFromFile() error {
 	return nil
 }
 
-func (store *FileStore) Ping() error {
+func (fs *FileStore) Ping() error {
 	err := errors.New("unable to access the store")
 	return err
 }

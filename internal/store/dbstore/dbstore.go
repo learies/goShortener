@@ -16,6 +16,6 @@ func (d *DBStore) Get(shortURL string) (string, error) {
 	return "", nil
 }
 
-func (ds *DBStore) Ping() error {
-	return ds.DB.Ping()
+func (d *DBStore) Ping() error {
+	return d.DB.Ping()
 }
