@@ -26,3 +26,5 @@ vendor/
 
 shortenertestbeta-darwin-arm64
 statictest-darwin-arm64
+
+*.json

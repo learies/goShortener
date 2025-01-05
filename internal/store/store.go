@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/learies/goShortener/internal/config"
 	"github.com/learies/goShortener/internal/store/filestore"
 )
 
@@ -9,9 +10,10 @@ type Store interface {
 	Get(shortURL string) (string, error)
 }
 
-func NewStore() (Store, error) {
+func NewStore(cfg config.Config) (Store, error) {
 	store := &filestore.FileStore{
 		URLMapping: make(map[string]string),
+		FilePath:   cfg.FilePath,
 	}
 
 	return store, nil

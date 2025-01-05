@@ -15,15 +15,6 @@ func checkOriginalURL(originalURL string) bool {
 	return strings.HasPrefix(originalURL, "http://") || strings.HasPrefix(originalURL, "https://")
 }
 
-func getShortURL(store store.Store, baseURL, originalURL string, shortener services.Shortener) string {
-	shortURL := shortener.GenerateShortURL(originalURL)
-	err := store.Add(shortURL, originalURL)
-	if err != nil {
-		return ""
-	}
-	return baseURL + "/" + shortURL
-}
-
 func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -38,11 +29,19 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 			return
 		}
 
-		shortenedURL := getShortURL(store, baseURL, originalURL, shortener)
-		if shortenedURL == "" {
-			http.Error(w, "can't add to store", http.StatusInternalServerError)
+		shortURL, err := shortener.GenerateShortURL(originalURL)
+		if err != nil {
+			http.Error(w, "can't generate short URL", http.StatusInternalServerError)
 			return
 		}
+
+		err = store.Add(shortURL, originalURL)
+		if err != nil {
+			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			return
+		}
+
+		shortenedURL := baseURL + "/" + shortURL
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -86,11 +85,19 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			return
 		}
 
-		shortenedURL := getShortURL(store, baseURL, originalURL, shortener)
-		if shortenedURL == "" {
-			http.Error(w, "can't add to store", http.StatusInternalServerError)
+		shortURL, err := shortener.GenerateShortURL(originalURL)
+		if err != nil {
+			http.Error(w, "can't generate short URL", http.StatusInternalServerError)
 			return
 		}
+
+		err = store.Add(shortURL, originalURL)
+		if err != nil {
+			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			return
+		}
+
+		shortenedURL := baseURL + "/" + shortURL
 
 		var shortenResponse models.ShortenResponse
 		shortenResponse.Result = shortenedURL

@@ -18,7 +18,7 @@ type App struct {
 func NewApp(cfg *config.Config) (*App, error) {
 	router := router.NewRouter()
 
-	store, err := store.NewStore()
+	store, err := store.NewStore(*cfg)
 	if err != nil {
 		logger.Log.Error("Failed to setup store", "error", err)
 		return nil, err
