@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/services"
 	"github.com/learies/goShortener/internal/store"
@@ -111,5 +112,18 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		w.Write(responseBody)
+	}
+}
+
+func (h *Handler) PingHandler(store store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := store.Ping(); err != nil {
+			http.Error(w, "Store is not available", http.StatusInternalServerError)
+			logger.Log.Error("Store ping failed", "error", err)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Successfully connected to the store"))
 	}
 }
