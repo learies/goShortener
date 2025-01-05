@@ -53,14 +53,16 @@ func (fs *FileStore) Get(shortURL string) (string, error) {
 }
 
 func (fs *FileStore) SaveToFile() error {
-	file, err := os.Create("store.json")
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	file, err := os.Create(fs.FilePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
-
 	for shortURL, originalURL := range fs.URLMapping {
 		record := models.ShortenStore{
 			UUID:        uuid.New(),
@@ -68,8 +70,7 @@ func (fs *FileStore) SaveToFile() error {
 			OriginalURL: originalURL,
 		}
 
-		// Записываем объект ShortenStore в файл.
-		if err := encoder.Encode(record); err != nil {
+		if err := encoder.Encode(&record); err != nil {
 			return err
 		}
 
