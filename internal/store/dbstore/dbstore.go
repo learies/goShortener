@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 )
 
@@ -43,4 +44,34 @@ func (d *DBStore) Get(ctx context.Context, shortURL string) (string, error) {
 
 func (d *DBStore) Ping() error {
 	return d.DB.Ping()
+}
+
+func (d *DBStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error {
+	tx, err := d.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, request := range batchRequest {
+		_, err = stmt.ExecContext(ctx, request.CorrelationID, request.ShortURL, request.OriginalURL)
+		if err != nil {
+			logger.Log.Error("Error adding batch request", "error", err)
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Log.Error("Error committing batch request", "error", err)
+		return err
+	}
+
+	return nil
 }

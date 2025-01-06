@@ -58,6 +58,23 @@ func (fs *FileStore) Get(ctx context.Context, shortURL string) (string, error) {
 	return originalURL, nil
 }
 
+func (fs *FileStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	for _, request := range batchRequest {
+		fs.URLMapping[request.ShortURL] = request.OriginalURL
+	}
+
+	if fs.FilePath != "" {
+		fs.SaveToFile()
+	}
+
+	logger.Log.Info("Added batch to store", "batchRequest", batchRequest)
+
+	return nil
+}
+
 func (fs *FileStore) SaveToFile() error {
 	file, err := os.OpenFile(fs.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {

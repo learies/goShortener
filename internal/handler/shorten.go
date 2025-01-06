@@ -126,6 +126,65 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 	}
 }
 
+func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "can't read body", http.StatusInternalServerError)
+			return
+		}
+
+		var batchRequest []models.ShortenBatchRequest
+		err = json.Unmarshal(body, &batchRequest)
+		if err != nil {
+			http.Error(w, "can't unmarshal body", http.StatusBadRequest)
+			return
+		}
+
+		var batchResponse []models.ShortenBatchResponse
+		var batchShorten []models.ShortenBatchStore
+		for _, request := range batchRequest {
+			shortURL, err := shortener.GenerateShortURL(request.OriginalURL)
+			if err != nil {
+				http.Error(w, "can't generate short URL", http.StatusInternalServerError)
+				return
+			}
+
+			shortenedURL := baseURL + "/" + shortURL
+
+			batchResponse = append(batchResponse, models.ShortenBatchResponse{
+				CorrelationID: request.CorrelationID,
+				ShortURL:      shortenedURL,
+			})
+
+			batchShorten = append(batchShorten, models.ShortenBatchStore{
+				CorrelationID: request.CorrelationID,
+				ShortURL:      shortURL,
+				OriginalURL:   request.OriginalURL,
+			})
+		}
+
+		err = store.AddBatch(ctx, batchShorten)
+		if err != nil {
+			http.Error(w, "can't save batch short URL", http.StatusInternalServerError)
+			return
+		}
+
+		responseBody, err := json.Marshal(batchResponse)
+		if err != nil {
+			http.Error(w, "can't marshal response", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBody)
+	}
+}
+
 func (h *Handler) PingHandler(store store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := store.Ping(); err != nil {
