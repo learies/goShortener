@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/store/filestore"
 )
 
@@ -29,6 +30,10 @@ func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string) error
 
 func (m *MockStore) Get(ctx context.Context, shortURL string) (string, error) {
 	return m.GetFunc(ctx, shortURL)
+}
+
+func (m *MockStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error {
+	return nil
 }
 
 func (m *MockStore) Ping() error {
@@ -150,5 +155,28 @@ func TestMainHandler(t *testing.T) {
 		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
+	})
+
+	t.Run("ShortenLinkBatch", func(t *testing.T) {
+		reqBody := `[{"correlation_id":"123","original_url":"https://practicum.yandex.ru/"}]`
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		handler.ShortenLinkBatch(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusCreated, result.StatusCode)
+
+		contentType := result.Header.Get("Content-Type")
+		assert.Equal(t, "application/json", contentType)
+
+		body, err := io.ReadAll(result.Body)
+		assert.NoError(t, err)
+
+		expected := `[{"correlation_id":"123","short_url":"http://localhost:8080/EwHXdJfB"}]`
+		assert.JSONEq(t, expected, string(body))
 	})
 }
