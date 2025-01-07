@@ -41,13 +41,15 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 			return
 		}
 
+		shortenedURL := baseURL + "/" + shortURL
+
 		err = store.Add(ctx, shortURL, originalURL)
 		if err != nil {
-			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(shortenedURL))
 			return
 		}
-
-		shortenedURL := baseURL + "/" + shortURL
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)

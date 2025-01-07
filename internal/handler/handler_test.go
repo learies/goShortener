@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,9 +23,13 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 
 type MockStore struct {
 	GetFunc func(ctx context.Context, shortURL string) (string, error)
+	AddFunc func(ctx context.Context, shortURL, originalURL string) error
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string) error {
+	if m.AddFunc != nil {
+		return m.AddFunc(ctx, shortURL, originalURL)
+	}
 	return nil
 }
 
@@ -81,6 +86,24 @@ func TestMainHandler(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
 	})
 
+	t.Run("CreateShortLinkConflict", func(t *testing.T) {
+		reqBody := strings.NewReader("https://practicum.yandex.ru/")
+		req := httptest.NewRequest(http.MethodPost, "/", reqBody)
+		req.Header.Set("Content-Type", "text/plain")
+		recorder := httptest.NewRecorder()
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+			return fmt.Errorf("conflict error")
+		}
+
+		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusConflict, result.StatusCode)
+	})
+
 	t.Run("GetOriginalURL", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
@@ -125,6 +148,10 @@ func TestMainHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+			return nil
+		}
 
 		handler.ShortenLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
