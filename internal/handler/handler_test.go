@@ -170,6 +170,24 @@ func TestMainHandler(t *testing.T) {
 		assert.JSONEq(t, expected, string(body))
 	})
 
+	t.Run("ShortenLinkConflict", func(t *testing.T) {
+		reqBody := `{"url":"https://practicum.yandex.ru/"}`
+		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+			return fmt.Errorf("conflict error")
+		}
+
+		handler.ShortenLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusConflict, result.StatusCode)
+	})
+
 	t.Run("ShortenLinkBadRequest", func(t *testing.T) {
 		reqBody := `{"bad json"}`
 		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
