@@ -16,6 +16,7 @@ type ShortenStore struct {
 	UUID        uuid.UUID `json:"uuid"`
 	ShortURL    string    `json:"short_url"`
 	OriginalURL string    `json:"original_url"`
+	UserID      uuid.UUID `json:"user_id"`
 }
 
 type ShortenBatchRequest struct {
@@ -26,6 +27,11 @@ type ShortenBatchRequest struct {
 type ShortenBatchResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+
+type UserURLResponse struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 type ShortenBatchStore struct {

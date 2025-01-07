@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/learies/goShortener/internal/config/contextutils"
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/services"
@@ -43,7 +44,13 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 
 		shortenedURL := baseURL + "/" + shortURL
 
-		err = store.Add(ctx, shortURL, originalURL)
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		err = store.Add(ctx, shortURL, originalURL, userID)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -116,7 +123,13 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			return
 		}
 
-		err = store.Add(ctx, shortURL, originalURL)
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		err = store.Add(ctx, shortURL, originalURL, userID)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)
@@ -134,6 +147,12 @@ func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
 		defer cancel()
+
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -171,7 +190,7 @@ func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener 
 			})
 		}
 
-		err = store.AddBatch(ctx, batchShorten)
+		err = store.AddBatch(ctx, batchShorten, userID)
 		if err != nil {
 			http.Error(w, "can't save batch short URL", http.StatusInternalServerError)
 			return
@@ -199,5 +218,47 @@ func (h *Handler) PingHandler(store store.Store) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Successfully connected to the store"))
+	}
+}
+
+func (h *Handler) GetUserURLs(store store.Store, baseURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		urls, err := store.GetUserURLs(ctx, userID)
+		if err != nil {
+			http.Error(w, "can't get user URLs", http.StatusNotFound)
+			return
+		}
+
+		if len(urls) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		modifiedUrls := make([]models.UserURLResponse, len(urls))
+		for i, url := range urls {
+			modifiedUrls[i] = models.UserURLResponse{
+				ShortURL:    baseURL + "/" + url.ShortURL,
+				OriginalURL: url.OriginalURL,
+			}
+		}
+
+		responseBody, err := json.Marshal(modifiedUrls)
+		if err != nil {
+			http.Error(w, "can't marshal response", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBody)
 	}
 }

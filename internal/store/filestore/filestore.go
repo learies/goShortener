@@ -21,7 +21,7 @@ type FileStore struct {
 	FilePath   string
 }
 
-func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string) error {
+func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -58,7 +58,7 @@ func (fs *FileStore) Get(ctx context.Context, shortURL string) (string, error) {
 	return originalURL, nil
 }
 
-func (fs *FileStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error {
+func (fs *FileStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -124,6 +124,10 @@ func (fs *FileStore) LoadFromFile() error {
 	logger.Log.Info("Loaded from file", "URLMapping", fs.URLMapping)
 
 	return nil
+}
+
+func (fs *FileStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
+	return nil, nil
 }
 
 func (fs *FileStore) Ping() error {
