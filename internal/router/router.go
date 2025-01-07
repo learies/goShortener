@@ -38,6 +38,7 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	routes.Post("/api/shorten", handler.ShortenLink(store, cfg.BaseURL, urlShortener))
 	routes.Get("/ping", handler.PingHandler(store))
 	routes.Post("/api/shorten/batch", handler.ShortenLinkBatch(store, cfg.BaseURL, urlShortener))
+	routes.Get("/api/user/urls", handler.GetUserURLs(store, cfg.BaseURL))
 	routes.MethodNotAllowed(methodNotAllowedHandler)
 
 	return nil

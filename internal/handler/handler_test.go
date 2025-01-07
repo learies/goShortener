@@ -24,8 +24,9 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 }
 
 type MockStore struct {
-	GetFunc func(ctx context.Context, shortURL string) (string, error)
-	AddFunc func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
+	GetFunc         func(ctx context.Context, shortURL string) (string, error)
+	AddFunc         func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
+	GetUserURLsFunc func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
@@ -39,8 +40,15 @@ func (m *MockStore) Get(ctx context.Context, shortURL string) (string, error) {
 	return m.GetFunc(ctx, shortURL)
 }
 
-func (m *MockStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error {
+func (m *MockStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {
 	return nil
+}
+
+func (m *MockStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
+	if m.GetUserURLsFunc != nil {
+		return m.GetUserURLsFunc(ctx, userID)
+	}
+	return nil, nil
 }
 
 func (m *MockStore) Ping() error {
@@ -230,6 +238,10 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
 		handler.ShortenLinkBatch(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
@@ -244,6 +256,35 @@ func TestMainHandler(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := `[{"correlation_id":"123","short_url":"http://localhost:8080/EwHXdJfB"}]`
+		assert.JSONEq(t, expected, string(body))
+	})
+
+	t.Run("GetUserURLs", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
+		recorder := httptest.NewRecorder()
+
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		mockStore.GetUserURLsFunc = func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
+			return []models.UserURLResponse{{ShortURL: "EwHXdJfB", OriginalURL: "https://practicum.yandex.ru/"}}, nil
+		}
+
+		handler.GetUserURLs(mockStore, "http://localhost:8080")(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusOK, result.StatusCode)
+
+		contentType := result.Header.Get("Content-Type")
+		assert.Equal(t, "application/json", contentType)
+
+		body, err := io.ReadAll(result.Body)
+		assert.NoError(t, err)
+
+		expected := `[{"short_url":"http://localhost:8080/EwHXdJfB","original_url":"https://practicum.yandex.ru/"}]`
 		assert.JSONEq(t, expected, string(body))
 	})
 }
