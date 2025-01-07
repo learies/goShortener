@@ -29,6 +29,7 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	routes.Use(middleware.Recoverer)
 	routes.Use(internalMiddleware.WithLogging)
 	routes.Use(internalMiddleware.GzipMiddleware)
+	routes.Use(internalMiddleware.JWTMiddleware)
 
 	handler := handler.NewHandler()
 

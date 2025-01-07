@@ -9,8 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/learies/goShortener/internal/config/contextutils"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/store/filestore"
 )
@@ -23,12 +25,12 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 
 type MockStore struct {
 	GetFunc func(ctx context.Context, shortURL string) (string, error)
-	AddFunc func(ctx context.Context, shortURL, originalURL string) error
+	AddFunc func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 }
 
-func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string) error {
+func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 	if m.AddFunc != nil {
-		return m.AddFunc(ctx, shortURL, originalURL)
+		return m.AddFunc(ctx, shortURL, originalURL, userID)
 	}
 	return nil
 }
@@ -56,6 +58,10 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "text/plain")
 		recorder := httptest.NewRecorder()
 
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
 		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
@@ -78,6 +84,10 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "text/plain")
 		recorder := httptest.NewRecorder()
 
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
 		handler.CreateShortLink(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
 		result := recorder.Result()
@@ -92,7 +102,11 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "text/plain")
 		recorder := httptest.NewRecorder()
 
-		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 			return fmt.Errorf("conflict error")
 		}
 
@@ -149,7 +163,11 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
-		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 			return nil
 		}
 
@@ -176,7 +194,11 @@ func TestMainHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
-		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string) error {
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		mockStore.AddFunc = func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 			return fmt.Errorf("conflict error")
 		}
 

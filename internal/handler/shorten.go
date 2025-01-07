@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/learies/goShortener/internal/config/contextutils"
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/services"
@@ -43,7 +44,13 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 
 		shortenedURL := baseURL + "/" + shortURL
 
-		err = store.Add(ctx, shortURL, originalURL)
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		err = store.Add(ctx, shortURL, originalURL, userID)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
@@ -116,7 +123,13 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			return
 		}
 
-		err = store.Add(ctx, shortURL, originalURL)
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		err = store.Add(ctx, shortURL, originalURL, userID)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)

@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/learies/goShortener/internal/config"
 	"github.com/learies/goShortener/internal/config/database"
 	"github.com/learies/goShortener/internal/models"
@@ -11,7 +13,7 @@ import (
 )
 
 type Store interface {
-	Add(ctx context.Context, shortURL, originalURL string) error
+	Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 	Get(ctx context.Context, shortURL string) (string, error)
 	AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore) error
 	Ping() error

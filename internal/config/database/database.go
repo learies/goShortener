@@ -24,7 +24,9 @@ func initialize(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS urls (
 		uuid UUID PRIMARY KEY,
 		short_url VARCHAR(8) NOT NULL UNIQUE,
-		original_url TEXT NOT NULL UNIQUE
+		original_url TEXT NOT NULL UNIQUE,
+		user_id UUID NOT NULL,
+		is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 	);`
 
 	_, err := db.Exec(query)

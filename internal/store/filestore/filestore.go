@@ -21,7 +21,7 @@ type FileStore struct {
 	FilePath   string
 }
 
-func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string) error {
+func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 

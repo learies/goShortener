@@ -14,15 +14,16 @@ type DBStore struct {
 	DB *sql.DB
 }
 
-func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string) error {
+func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 	record := models.ShortenStore{
 		UUID:        uuid.New(),
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
+		UserID:      userID,
 	}
 
-	query := `INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)`
-	_, err := d.DB.ExecContext(ctx, query, record.UUID, record.ShortURL, record.OriginalURL)
+	query := `INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)`
+	_, err := d.DB.ExecContext(ctx, query, record.UUID, record.ShortURL, record.OriginalURL, record.UserID)
 	if err != nil {
 		return err
 	}
