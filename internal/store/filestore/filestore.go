@@ -130,6 +130,10 @@ func (fs *FileStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]model
 	return nil, nil
 }
 
+func (fs *FileStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
+	return nil
+}
+
 func (fs *FileStore) Ping() error {
 	err := errors.New("unable to access the store")
 	return err

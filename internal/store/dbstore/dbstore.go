@@ -103,3 +103,31 @@ func (d *DBStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.U
 
 	return urls, nil
 }
+
+func (d *DBStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
+	tx, err := d.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `UPDATE urls SET is_deleted = true WHERE user_id = $1 AND short_url = $2`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for userShortURL := range userShortURLs {
+		_, err = stmt.ExecContext(ctx, userShortURL.UserID, userShortURL.ShortURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

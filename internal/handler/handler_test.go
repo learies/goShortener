@@ -51,6 +51,10 @@ func (m *MockStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models
 	return nil, nil
 }
 
+func (m *MockStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
+	return nil
+}
+
 func (m *MockStore) Ping() error {
 	return nil
 }
