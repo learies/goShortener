@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/google/uuid"
 
 	"github.com/learies/goShortener/internal/config/contextutils"
-	"github.com/learies/goShortener/internal/config/logger"
 )
 
 type Claims struct {
@@ -19,7 +17,6 @@ type Claims struct {
 
 func CreateUserID() string {
 	userID := uuid.New().String()
-	logger.Log.Info("Created new user ID", "userID", userID)
 	return userID
 }
 
@@ -36,7 +33,6 @@ func JWTMiddleware(next http.Handler) http.Handler {
 
 		// Если токен не передан нужно создать userID и создать для него токен
 		if tokenString == "" {
-			logger.Log.Error("No token provided")
 			userID = CreateUserID()
 
 			// Время жизни токена 1 минута
@@ -75,7 +71,6 @@ func JWTMiddleware(next http.Handler) http.Handler {
 				return
 			}
 			userID = claims.UserID
-			logger.Log.Info("Got user ID from token in cookie", "userID", userID)
 		}
 
 		ctx := contextutils.WithUserID(r.Context(), uuid.MustParse(userID))
