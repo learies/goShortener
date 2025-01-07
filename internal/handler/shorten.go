@@ -41,13 +41,15 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 			return
 		}
 
+		shortenedURL := baseURL + "/" + shortURL
+
 		err = store.Add(ctx, shortURL, originalURL)
 		if err != nil {
-			http.Error(w, "can't save short URL", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(shortenedURL))
 			return
 		}
-
-		shortenedURL := baseURL + "/" + shortURL
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -103,12 +105,6 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 			return
 		}
 
-		err = store.Add(ctx, shortURL, originalURL)
-		if err != nil {
-			http.Error(w, "can't save short URL", http.StatusInternalServerError)
-			return
-		}
-
 		shortenedURL := baseURL + "/" + shortURL
 
 		var shortenResponse models.ShortenResponse
@@ -117,6 +113,14 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 		responseBody, err := json.Marshal(shortenResponse)
 		if err != nil {
 			http.Error(w, "can't marshal response", http.StatusInternalServerError)
+			return
+		}
+
+		err = store.Add(ctx, shortURL, originalURL)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			w.Write(responseBody)
 			return
 		}
 
