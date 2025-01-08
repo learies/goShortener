@@ -24,9 +24,10 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 }
 
 type MockStore struct {
-	GetFunc         func(ctx context.Context, shortURL string) (string, error)
-	AddFunc         func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
-	GetUserURLsFunc func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
+	GetFunc            func(ctx context.Context, shortURL string) (string, error)
+	AddFunc            func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
+	GetUserURLsFunc    func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
+	DeleteUserURLsFunc func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
@@ -290,5 +291,30 @@ func TestMainHandler(t *testing.T) {
 
 		expected := `[{"short_url":"http://localhost:8080/EwHXdJfB","original_url":"https://practicum.yandex.ru/"}]`
 		assert.JSONEq(t, expected, string(body))
+	})
+
+	t.Run("DeleteUserURLs", func(t *testing.T) {
+		reqBody := `["EwHXdJfB"]`
+		req := httptest.NewRequest(http.MethodDelete, "/api/user/urls", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		userShortURLs := []models.UserShortURL{{ShortURL: "EwHXdJfB"}}
+		userShortURLsChan := make(chan models.UserShortURL, len(userShortURLs))
+		for _, url := range userShortURLs {
+			userShortURLsChan <- url
+		}
+		close(userShortURLsChan)
+
+		handler.DeleteUserURLs(mockStore)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusAccepted, result.StatusCode)
 	})
 }
