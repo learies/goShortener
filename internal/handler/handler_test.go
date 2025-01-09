@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -375,4 +376,61 @@ func TestMainHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, result.StatusCode)
 	})
+}
+
+func BenchmarkCreateShortLink(b *testing.B) {
+	handler := NewHandler()
+	mockStore := &MockStore{}
+	mockShortener := &MockShortener{}
+	baseURL := "http://localhost:8080"
+
+	reqBody := []byte("https://practicum.yandex.ru/")
+
+	for n := 0; n < b.N; n++ {
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBody))
+		recorder := httptest.NewRecorder()
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		handler.CreateShortLink(mockStore, baseURL, mockShortener)(recorder, req)
+	}
+}
+
+func BenchmarkGetOriginalURL(b *testing.B) {
+	handler := NewHandler()
+	mockStore := &MockStore{}
+
+	mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+		return models.ShortenStore{
+			OriginalURL: "https://practicum.yandex.ru/",
+			Deleted:     false,
+		}, nil
+	}
+
+	for n := 0; n < b.N; n++ {
+		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
+		recorder := httptest.NewRecorder()
+
+		handler.GetOriginalURL(mockStore)(recorder, req)
+	}
+}
+
+func BenchmarkShortenLink(b *testing.B) {
+	handler := NewHandler()
+	mockStore := &MockStore{}
+	mockShortener := &MockShortener{}
+	baseURL := "http://localhost:8080"
+
+	reqBody := `{"url":"https://practicum.yandex.ru/"}`
+
+	for n := 0; n < b.N; n++ {
+		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
+		recorder := httptest.NewRecorder()
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		handler.ShortenLink(mockStore, baseURL, mockShortener)(recorder, req)
+	}
 }
