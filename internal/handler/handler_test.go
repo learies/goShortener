@@ -28,6 +28,7 @@ type MockStore struct {
 	AddFunc            func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 	GetUserURLsFunc    func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLsFunc func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
+	PingFunc           func() error
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
@@ -57,6 +58,9 @@ func (m *MockStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan mod
 }
 
 func (m *MockStore) Ping() error {
+	if m.PingFunc != nil {
+		return m.PingFunc()
+	}
 	return nil
 }
 
@@ -354,5 +358,21 @@ func TestMainHandler(t *testing.T) {
 		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusGone, result.StatusCode)
+	})
+
+	t.Run("Ping", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+		recorder := httptest.NewRecorder()
+
+		mockStore.PingFunc = func() error {
+			return nil
+		}
+
+		handler.PingHandler(mockStore)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusOK, result.StatusCode)
 	})
 }
