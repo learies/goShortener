@@ -320,4 +320,23 @@ func TestMainHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusAccepted, result.StatusCode)
 	})
+
+	t.Run("GetOriginalURLGone", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
+		recorder := httptest.NewRecorder()
+
+		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+			return models.ShortenStore{
+				OriginalURL: "https://practicum.yandex.ru/",
+				Deleted:     true,
+			}, nil
+		}
+
+		handler.GetOriginalURL(mockStore)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusGone, result.StatusCode)
+	})
 }
