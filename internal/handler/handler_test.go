@@ -24,7 +24,7 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 }
 
 type MockStore struct {
-	GetFunc            func(ctx context.Context, shortURL string) (string, error)
+	GetFunc            func(ctx context.Context, shortURL string) (models.ShortenStore, error)
 	AddFunc            func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 	GetUserURLsFunc    func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLsFunc func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
@@ -37,7 +37,7 @@ func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userI
 	return nil
 }
 
-func (m *MockStore) Get(ctx context.Context, shortURL string) (string, error) {
+func (m *MockStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
 	return m.GetFunc(ctx, shortURL)
 }
 
@@ -135,8 +135,11 @@ func TestMainHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (string, error) {
-			return "https://practicum.yandex.ru/", nil
+		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+			return models.ShortenStore{
+				OriginalURL: "https://practicum.yandex.ru/",
+				Deleted:     false,
+			}, nil
 		}
 
 		handler.GetOriginalURL(mockStore)(recorder, req)
@@ -152,8 +155,8 @@ func TestMainHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (string, error) {
-			return "", filestore.ErrURLNotFound
+		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+			return models.ShortenStore{}, filestore.ErrURLNotFound
 		}
 
 		handler.GetOriginalURL(mockStore)(recorder, req)

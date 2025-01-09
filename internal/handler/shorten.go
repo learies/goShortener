@@ -78,7 +78,12 @@ func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Location", originalURL)
+		if originalURL.Deleted {
+			http.Error(w, "URL is deleted", http.StatusGone)
+			return
+		}
+
+		w.Header().Set("Location", originalURL.OriginalURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }

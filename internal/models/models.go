@@ -17,6 +17,7 @@ type ShortenStore struct {
 	ShortURL    string    `json:"short_url"`
 	OriginalURL string    `json:"original_url"`
 	UserID      uuid.UUID `json:"user_id"`
+	Deleted     bool      `json:"deleted"`
 }
 
 type ShortenBatchRequest struct {

@@ -36,7 +36,7 @@ func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string, user
 	return nil
 }
 
-func (fs *FileStore) Get(ctx context.Context, shortURL string) (string, error) {
+func (fs *FileStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -44,18 +44,21 @@ func (fs *FileStore) Get(ctx context.Context, shortURL string) (string, error) {
 		err := fs.LoadFromFile()
 		if err != nil {
 			logger.Log.Error("Failed to load from file", "error", err)
-			return "", err
+			return models.ShortenStore{}, err
 		}
 	}
 
 	originalURL, ok := fs.URLMapping[shortURL]
 	if !ok {
-		return "", ErrURLNotFound
+		return models.ShortenStore{}, ErrURLNotFound
 	}
 
 	logger.Log.Info("Retrieved from store", "shortURL", shortURL, "originalURL", originalURL)
 
-	return originalURL, nil
+	return models.ShortenStore{
+		OriginalURL: originalURL,
+		Deleted:     false,
+	}, nil
 }
 
 func (fs *FileStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {

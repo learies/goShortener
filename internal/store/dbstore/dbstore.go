@@ -8,6 +8,7 @@ import (
 
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
+	"github.com/learies/goShortener/internal/store/filestore"
 )
 
 type DBStore struct {
@@ -31,16 +32,20 @@ func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string, userID 
 	return nil
 }
 
-func (d *DBStore) Get(ctx context.Context, shortURL string) (string, error) {
-	query := `SELECT original_url FROM urls WHERE short_url = $1`
+func (d *DBStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+	query := `SELECT original_url, is_deleted FROM urls WHERE short_url = $1`
 
-	var originalURL string
-	err := d.DB.QueryRowContext(ctx, query, shortURL).Scan(&originalURL)
+	shortenStore := models.ShortenStore{}
+
+	err := d.DB.QueryRowContext(ctx, query, shortURL).Scan(&shortenStore.OriginalURL, &shortenStore.Deleted)
 	if err != nil {
-		return "", err
+		if err == sql.ErrNoRows {
+			return models.ShortenStore{}, filestore.ErrURLNotFound
+		}
+		return models.ShortenStore{}, err
 	}
 
-	return originalURL, nil
+	return shortenStore, nil
 }
 
 func (d *DBStore) Ping() error {
