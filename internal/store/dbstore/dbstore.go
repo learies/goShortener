@@ -8,6 +8,7 @@ import (
 
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
+	"github.com/learies/goShortener/internal/store/filestore"
 )
 
 type DBStore struct {
@@ -31,16 +32,20 @@ func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string, userID 
 	return nil
 }
 
-func (d *DBStore) Get(ctx context.Context, shortURL string) (string, error) {
-	query := `SELECT original_url FROM urls WHERE short_url = $1`
+func (d *DBStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+	query := `SELECT original_url, is_deleted FROM urls WHERE short_url = $1`
 
-	var originalURL string
-	err := d.DB.QueryRowContext(ctx, query, shortURL).Scan(&originalURL)
+	shortenStore := models.ShortenStore{}
+
+	err := d.DB.QueryRowContext(ctx, query, shortURL).Scan(&shortenStore.OriginalURL, &shortenStore.Deleted)
 	if err != nil {
-		return "", err
+		if err == sql.ErrNoRows {
+			return models.ShortenStore{}, filestore.ErrURLNotFound
+		}
+		return models.ShortenStore{}, err
 	}
 
-	return originalURL, nil
+	return shortenStore, nil
 }
 
 func (d *DBStore) Ping() error {
@@ -102,4 +107,32 @@ func (d *DBStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.U
 	}
 
 	return urls, nil
+}
+
+func (d *DBStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
+	tx, err := d.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `UPDATE urls SET is_deleted = true WHERE user_id = $1 AND short_url = $2`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for userShortURL := range userShortURLs {
+		_, err = stmt.ExecContext(ctx, userShortURL.UserID, userShortURL.ShortURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

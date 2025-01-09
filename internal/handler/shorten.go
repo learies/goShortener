@@ -12,6 +12,7 @@ import (
 	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/services"
+	"github.com/learies/goShortener/internal/services/worker"
 	"github.com/learies/goShortener/internal/store"
 )
 
@@ -77,7 +78,12 @@ func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Location", originalURL)
+		if originalURL.Deleted {
+			http.Error(w, "URL is deleted", http.StatusGone)
+			return
+		}
+
+		w.Header().Set("Location", originalURL.OriginalURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
@@ -260,5 +266,38 @@ func (h *Handler) GetUserURLs(store store.Store, baseURL string) http.HandlerFun
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseBody)
+	}
+}
+
+func (h *Handler) DeleteUserURLs(store store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+		defer cancel()
+
+		userID, ok := contextutils.GetUserID(ctx)
+		if !ok {
+			http.Error(w, "UserID not found in context", http.StatusUnauthorized)
+			return
+		}
+
+		var deleteRequest models.ShortenDeleteRequest
+		err := json.NewDecoder(r.Body).Decode(&deleteRequest.ShortURLs)
+		if err != nil {
+			http.Error(w, "can't unmarshal body", http.StatusBadRequest)
+			return
+		}
+
+		for _, shortURL := range deleteRequest.ShortURLs {
+			err := store.DeleteUserURLs(ctx, worker.DeleteUserURLs(models.UserShortURL{
+				UserID:   userID,
+				ShortURL: shortURL,
+			}))
+			if err != nil {
+				http.Error(w, "can't delete URL", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
