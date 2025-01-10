@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"sync"
 
@@ -17,7 +18,7 @@ var ErrURLNotFound = errors.New("URL not found")
 
 type FileStore struct {
 	URLMapping map[string]string
-	mu         sync.Mutex
+	mu         sync.RWMutex
 	FilePath   string
 }
 
@@ -37,12 +38,11 @@ func (fs *FileStore) Add(ctx context.Context, shortURL, originalURL string, user
 }
 
 func (fs *FileStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-	fs.mu.Lock()
-	defer fs.mu.Unlock()
+	fs.mu.RLock()
+	defer fs.mu.RUnlock()
 
 	if fs.FilePath != "" {
-		err := fs.LoadFromFile()
-		if err != nil {
+		if err := fs.LoadFromFile(); err != nil {
 			logger.Log.Error("Failed to load from file", "error", err)
 			return models.ShortenStore{}, err
 		}
@@ -103,6 +103,7 @@ func (fs *FileStore) SaveToFile() error {
 	return nil
 }
 
+// Adjusted LoadFromFile method
 func (fs *FileStore) LoadFromFile() error {
 	file, err := os.Open(fs.FilePath)
 	if err != nil {
@@ -118,14 +119,15 @@ func (fs *FileStore) LoadFromFile() error {
 	for {
 		var record models.ShortenStore
 		if err := decoder.Decode(&record); err != nil {
-			break
+			if err == io.EOF {
+				break
+			}
+			return err
 		}
-
 		fs.URLMapping[record.ShortURL] = record.OriginalURL
 	}
 
 	logger.Log.Info("Loaded from file", "URLMapping", fs.URLMapping)
-
 	return nil
 }
 
