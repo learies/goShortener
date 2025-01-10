@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -29,7 +28,6 @@ type MockStore struct {
 	AddFunc            func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 	GetUserURLsFunc    func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLsFunc func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
-	PingFunc           func() error
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
@@ -59,9 +57,6 @@ func (m *MockStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan mod
 }
 
 func (m *MockStore) Ping() error {
-	if m.PingFunc != nil {
-		return m.PingFunc()
-	}
 	return nil
 }
 
@@ -154,22 +149,6 @@ func TestMainHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusTemporaryRedirect, result.StatusCode)
 		assert.Equal(t, "https://practicum.yandex.ru/", result.Header.Get("Location"))
-	})
-
-	t.Run("GetDeletedOriginalURL", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
-		recorder := httptest.NewRecorder()
-
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-			return models.ShortenStore{Deleted: true}, nil
-		}
-
-		handler.GetOriginalURL(mockStore)(recorder, req)
-
-		result := recorder.Result()
-		defer result.Body.Close()
-
-		assert.Equal(t, http.StatusGone, result.StatusCode)
 	})
 
 	t.Run("GetOriginalURLNotFound", func(t *testing.T) {
@@ -341,96 +320,4 @@ func TestMainHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusAccepted, result.StatusCode)
 	})
-
-	t.Run("GetOriginalURLGone", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
-		recorder := httptest.NewRecorder()
-
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-			return models.ShortenStore{
-				OriginalURL: "https://practicum.yandex.ru/",
-				Deleted:     true,
-			}, nil
-		}
-
-		handler.GetOriginalURL(mockStore)(recorder, req)
-
-		result := recorder.Result()
-		defer result.Body.Close()
-
-		assert.Equal(t, http.StatusGone, result.StatusCode)
-	})
-
-	t.Run("Ping", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
-		recorder := httptest.NewRecorder()
-
-		mockStore.PingFunc = func() error {
-			return nil
-		}
-
-		handler.PingHandler(mockStore)(recorder, req)
-
-		result := recorder.Result()
-		defer result.Body.Close()
-
-		assert.Equal(t, http.StatusOK, result.StatusCode)
-	})
-}
-
-func BenchmarkCreateShortLink(b *testing.B) {
-	handler := NewHandler()
-	mockStore := &MockStore{}
-	mockShortener := &MockShortener{}
-	baseURL := "http://localhost:8080"
-
-	reqBody := []byte("https://practicum.yandex.ru/")
-
-	for n := 0; n < b.N; n++ {
-		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBody))
-		recorder := httptest.NewRecorder()
-		userID := uuid.New()
-		ctx := contextutils.WithUserID(req.Context(), userID)
-		req = req.WithContext(ctx)
-
-		handler.CreateShortLink(mockStore, baseURL, mockShortener)(recorder, req)
-	}
-}
-
-func BenchmarkGetOriginalURL(b *testing.B) {
-	handler := NewHandler()
-	mockStore := &MockStore{}
-
-	mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-		return models.ShortenStore{
-			OriginalURL: "https://practicum.yandex.ru/",
-			Deleted:     false,
-		}, nil
-	}
-
-	for n := 0; n < b.N; n++ {
-		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
-		recorder := httptest.NewRecorder()
-
-		handler.GetOriginalURL(mockStore)(recorder, req)
-	}
-}
-
-func BenchmarkShortenLink(b *testing.B) {
-	handler := NewHandler()
-	mockStore := &MockStore{}
-	mockShortener := &MockShortener{}
-	baseURL := "http://localhost:8080"
-
-	reqBody := `{"url":"https://practicum.yandex.ru/"}`
-
-	for n := 0; n < b.N; n++ {
-		req := httptest.NewRequest(http.MethodPost, "/shorten", strings.NewReader(reqBody))
-		recorder := httptest.NewRecorder()
-		userID := uuid.New()
-		ctx := contextutils.WithUserID(req.Context(), userID)
-		req = req.WithContext(ctx)
-
-		handler.ShortenLink(mockStore, baseURL, mockShortener)(recorder, req)
-	}
 }

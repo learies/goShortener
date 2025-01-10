@@ -2,7 +2,6 @@ package router
 
 import (
 	"net/http"
-	"net/http/pprof"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -43,17 +42,6 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	routes.Delete("/api/user/urls", handler.DeleteUserURLs(store))
 	routes.MethodNotAllowed(methodNotAllowedHandler)
 
-	routes.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	routes.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	routes.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	routes.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	routes.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
-	routes.Handle("/debug/pprof/heap", http.HandlerFunc(pprof.Handler("heap").ServeHTTP))
-	routes.Handle("/debug/pprof/goroutine", http.HandlerFunc(pprof.Handler("goroutine").ServeHTTP))
-	routes.Handle("/debug/pprof/block", http.HandlerFunc(pprof.Handler("block").ServeHTTP))
-	routes.Handle("/debug/pprof/mutex", http.HandlerFunc(pprof.Handler("mutex").ServeHTTP))
-	routes.Handle("/debug/pprof/threadcreate", http.HandlerFunc(pprof.Handler("threadcreate").ServeHTTP))
-	routes.Handle("/debug/pprof/allocs", http.HandlerFunc(pprof.Handler("allocs").ServeHTTP))
 	return nil
 }
 
