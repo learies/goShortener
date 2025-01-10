@@ -15,16 +15,19 @@ import (
 	"github.com/learies/goShortener/internal/store"
 )
 
+// Router is a struct that wraps the chi.Mux router.
 type Router struct {
 	*chi.Mux
 }
 
+// NewRouter creates a new Router instance.
 func NewRouter() *Router {
 	return &Router{
 		Mux: chi.NewRouter(),
 	}
 }
 
+// Routes configures the routes for the router.
 func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener services.Shortener) error {
 	routes := r.Mux
 	routes.Use(middleware.Recoverer)
@@ -57,6 +60,7 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	return nil
 }
 
+// methodNotAllowedHandler is a handler that returns a 405 Method Not Allowed status.
 func methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Error("Method not allowed", "method", r.Method, "path", r.URL.Path)
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

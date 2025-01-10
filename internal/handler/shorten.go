@@ -16,10 +16,15 @@ import (
 	"github.com/learies/goShortener/internal/store"
 )
 
+// checkOriginalURL verifies if the provided URL starts with the prefixes
+// "http://" or "https://". It returns true if the URL is valid, otherwise false.
 func checkOriginalURL(originalURL string) bool {
 	return strings.HasPrefix(originalURL, "http://") || strings.HasPrefix(originalURL, "https://")
 }
 
+// CreateShortLink is an HTTP handler that reads an original URL from the request
+// body, generates a short URL, and responds with the shortened URL.
+// It requires a store to persist the mapping and a shortener to generate the short URL.
 func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
@@ -65,6 +70,9 @@ func (h *Handler) CreateShortLink(store store.Store, baseURL string, shortener s
 	}
 }
 
+// GetOriginalURL is an HTTP handler that retrieves the original URL for a given
+// short URL path and redirects the client.
+// It requires a store to fetch the mapping from the short URL.
 func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
@@ -88,6 +96,9 @@ func (h *Handler) GetOriginalURL(store store.Store) http.HandlerFunc {
 	}
 }
 
+// ShortenLink is an HTTP handler that reads a JSON body with an original URL,
+// generates a short URL, and responds with a JSON containing the shortened URL.
+// It requires a store to persist the mapping and a shortener to generate the short URL.
 func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
@@ -149,6 +160,9 @@ func (h *Handler) ShortenLink(store store.Store, baseURL string, shortener servi
 	}
 }
 
+// ShortenLinkBatch is an HTTP handler that reads a JSON array of URLs,
+// generates short URLs for each, and responds with a JSON array of shortened URLs.
+// It requires a store to persist the batch and a shortener to generate short URLs.
 func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener services.Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
@@ -214,6 +228,8 @@ func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener 
 	}
 }
 
+// PingHandler is an HTTP handler that checks the availability of the store.
+// It responds with a success message if the store is reachable.
 func (h *Handler) PingHandler(store store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := store.Ping(); err != nil {
@@ -227,6 +243,9 @@ func (h *Handler) PingHandler(store store.Store) http.HandlerFunc {
 	}
 }
 
+// GetUserURLs is an HTTP handler that retrieves all URLs associated with the user
+// ID in the context. It responds with a JSON array of these URLs.
+// It requires a store to fetch the user's URLs.
 func (h *Handler) GetUserURLs(store store.Store, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
@@ -269,6 +288,9 @@ func (h *Handler) GetUserURLs(store store.Store, baseURL string) http.HandlerFun
 	}
 }
 
+// DeleteUserURLs is an HTTP handler that reads a JSON array of short URLs to be
+// deleted for the user. It performs logical deletion of these URLs.
+// It requires a store to delete the URLs and the user's ID in the context.
 func (h *Handler) DeleteUserURLs(store store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)

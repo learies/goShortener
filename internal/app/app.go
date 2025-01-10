@@ -10,11 +10,13 @@ import (
 	"github.com/learies/goShortener/internal/store"
 )
 
+// App is a struct that holds the application configuration and router.
 type App struct {
 	Config *config.Config
 	Router *router.Router
 }
 
+// NewApp is a function that creates a new App instance.
 func NewApp(cfg *config.Config) (*App, error) {
 	router := router.NewRouter()
 
@@ -37,6 +39,7 @@ func NewApp(cfg *config.Config) (*App, error) {
 	}, nil
 }
 
+// Run is a method that starts the server.
 func (a *App) Run() error {
 	logger.Log.Info("Starting server on", "address", a.Config.Address)
 	return http.ListenAndServe(a.Config.Address, a.Router.Mux)

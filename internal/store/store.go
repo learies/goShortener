@@ -12,6 +12,7 @@ import (
 	"github.com/learies/goShortener/internal/store/filestore"
 )
 
+// Store is an interface that defines the methods for the store.
 type Store interface {
 	Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
 	Get(ctx context.Context, shortURL string) (models.ShortenStore, error)
@@ -21,6 +22,7 @@ type Store interface {
 	Ping() error
 }
 
+// NewStore is a function that creates a new store.
 func NewStore(cfg config.Config) (Store, error) {
 	if cfg.DatabaseDSN != "" {
 		db, err := database.Connect(cfg.DatabaseDSN)

@@ -10,16 +10,21 @@ import (
 	"github.com/learies/goShortener/internal/config/contextutils"
 )
 
+// Claims represents the claims in a JWT token.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string `json:"user_id"`
 }
 
+// CreateUserID generates a new UUID and returns it as a string.
 func CreateUserID() string {
 	userID := uuid.New().String()
 	return userID
 }
 
+// JWTMiddleware is an HTTP middleware that handles JWT authentication.
+// It checks for a JWT token in the request cookies and creates a new token if none is found.
+// It sets the user ID in the request context and passes the request to the next handler.
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var userID string
