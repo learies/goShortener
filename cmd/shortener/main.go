@@ -6,6 +6,7 @@ import (
 	"github.com/learies/goShortener/internal/config/logger"
 )
 
+// main is the entry point for the application.
 func main() {
 	err := logger.NewLogger("info")
 	if err != nil {

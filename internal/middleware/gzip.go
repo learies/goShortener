@@ -7,18 +7,25 @@ import (
 	"strings"
 )
 
+// gzipResponseWriter wraps the http.ResponseWriter and allows
+// writing compressed response data.
 type gzipResponseWriter struct {
 	http.ResponseWriter
 	writer io.Writer
 }
 
+// Write overrides the default Write method to use the Gzip writer
+// for compressing response data.
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.writer.Write(b)
 }
 
-// GzipMiddleware compresses HTTP responses with gzip when accepted by the client.
+// GzipMiddleware is an HTTP middleware that compresses the response
+// using gzip if the client supports it (indicated by the "Accept-Encoding" header).
+// It also decompresses Gzip-compressed request bodies if needed.
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Decompress the request body if it is gzip-compressed.
 		if r.Header.Get("Content-Encoding") == "gzip" {
 			gr, err := gzip.NewReader(r.Body)
 			if err != nil {
@@ -29,6 +36,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 			r.Body = io.NopCloser(gr)
 		}
 
+		// Compress the response using gzip if the client accepts it.
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			gz := gzip.NewWriter(w)
 			defer gz.Close()

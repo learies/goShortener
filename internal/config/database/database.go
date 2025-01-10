@@ -6,6 +6,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// Connect is a function that connects to the database.
 func Connect(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -19,6 +20,7 @@ func Connect(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+// initialize is a function that initializes the database.
 func initialize(db *sql.DB) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS urls (

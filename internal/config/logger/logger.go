@@ -5,8 +5,10 @@ import (
 	"os"
 )
 
+// Log is a global variable that holds the logger instance.
 var Log *slog.Logger
 
+// NewLogger is a function that creates a new logger instance.
 func NewLogger(level string) error {
 	var logLevel slog.Level
 

@@ -11,10 +11,12 @@ import (
 	"github.com/learies/goShortener/internal/store/filestore"
 )
 
+// DBStore is a struct that represents the database store.
 type DBStore struct {
 	DB *sql.DB
 }
 
+// Add is a method that adds a new URL to the database.
 func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
 	record := models.ShortenStore{
 		UUID:        uuid.New(),
@@ -32,6 +34,7 @@ func (d *DBStore) Add(ctx context.Context, shortURL, originalURL string, userID 
 	return nil
 }
 
+// Get is a method that retrieves the original URL from the database.
 func (d *DBStore) Get(ctx context.Context, shortURL string) (models.ShortenStore, error) {
 	query := `SELECT original_url, is_deleted FROM urls WHERE short_url = $1`
 
@@ -48,10 +51,12 @@ func (d *DBStore) Get(ctx context.Context, shortURL string) (models.ShortenStore
 	return shortenStore, nil
 }
 
+// Ping is a method that checks the database connection.
 func (d *DBStore) Ping() error {
 	return d.DB.Ping()
 }
 
+// AddBatch is a method that adds a batch of URLs to the database.
 func (d *DBStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {
 	tx, err := d.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -82,6 +87,7 @@ func (d *DBStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBat
 	return nil
 }
 
+// GetUserURLs is a method that retrieves all URLs associated with the user ID.
 func (d *DBStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
 	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1`
 
@@ -109,6 +115,7 @@ func (d *DBStore) GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.U
 	return urls, nil
 }
 
+// DeleteUserURLs is a method that deletes URLs associated with the user ID.
 func (d *DBStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
 	tx, err := d.DB.BeginTx(ctx, nil)
 	if err != nil {
