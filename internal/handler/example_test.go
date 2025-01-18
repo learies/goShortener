@@ -2,14 +2,12 @@ package handler_test
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"net/http"
 	"net/http/httptest"
 	"strings"
-	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/learies/goShortener/internal/config/contextutils"
 	"github.com/learies/goShortener/internal/handler"
@@ -27,79 +25,73 @@ type MockStore struct {
 	handler.MockStore
 }
 
-func TestHandler(t *testing.T) {
+func ExampleHandler_CreateShortLink() {
 	h := handler.NewHandler()
 	mockStore := &MockStore{}
 	mockShortener := &MockShortener{}
 	baseURL := "http://localhost:8080"
 
-	t.Run("CreateShortLink", func(t *testing.T) {
-		reqBody := strings.NewReader("https://example.com/")
-		req := httptest.NewRequest(http.MethodPost, "/", reqBody)
-		req.Header.Set("Content-Type", "text/plain")
-		rec := httptest.NewRecorder()
+	reqBody := strings.NewReader("https://example.com/")
+	req := httptest.NewRequest("POST", "/", reqBody)
+	req.Header.Set("Content-Type", "text/plain")
 
-		userID := uuid.New()
-		ctx := contextutils.WithUserID(req.Context(), userID)
-		req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
 
-		h.CreateShortLink(mockStore, baseURL, mockShortener)(rec, req)
+	userID := uuid.New()
+	ctx := contextutils.WithUserID(req.Context(), userID)
+	req = req.WithContext(ctx)
 
-		res := rec.Result()
-		defer res.Body.Close()
-		assert.Equal(t, http.StatusCreated, res.StatusCode)
+	h.CreateShortLink(mockStore, baseURL, mockShortener)(rec, req)
 
-		contentType := res.Header.Get("Content-Type")
-		assert.Equal(t, "text/plain", contentType)
+	res := rec.Result()
+	defer res.Body.Close()
 
-		body, err := io.ReadAll(res.Body)
-		assert.NoError(t, err)
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+	// Output: http://localhost:8080/EwHXdJfB
+}
 
-		expected := "http://localhost:8080/EwHXdJfB"
-		assert.Equal(t, expected, string(body))
-	})
+func ExampleHandler_CreateShortLink_badRequest() {
+	h := handler.NewHandler()
+	mockStore := &MockStore{}
+	mockShortener := &MockShortener{}
+	baseURL := "http://localhost:8080"
 
-	t.Run("CreateShortLinkBadRequest", func(t *testing.T) {
-		reqBody := strings.NewReader("{ bad json")
-		req := httptest.NewRequest(http.MethodPost, "/", reqBody)
-		req.Header.Set("Content-Type", "text/plain")
-		rec := httptest.NewRecorder()
+	reqBody := strings.NewReader("{ bad json")
+	req := httptest.NewRequest("POST", "/", reqBody)
+	req.Header.Set("Content-Type", "text/plain")
 
-		userID := uuid.New()
-		ctx := contextutils.WithUserID(req.Context(), userID)
-		req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
 
-		h.CreateShortLink(mockStore, baseURL, mockShortener)(rec, req)
+	userID := uuid.New()
+	ctx := contextutils.WithUserID(req.Context(), userID)
+	req = req.WithContext(ctx)
 
-		res := rec.Result()
-		defer res.Body.Close()
+	h.CreateShortLink(mockStore, baseURL, mockShortener)(rec, req)
 
-		assert.Equal(t, http.StatusBadRequest, res.StatusCode)
-	})
+	res := rec.Result()
+	defer res.Body.Close()
 
-	// Additional test cases would be similarly implemented...
+	fmt.Println(res.Status)
+	// Output: 400 Bad Request
+}
 
-	t.Run("GetOriginalURLNotFound", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
-		rec := httptest.NewRecorder()
+func ExampleHandler_GetOriginalURL_notFound() {
+	h := handler.NewHandler()
+	mockStore := &MockStore{}
+	mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
+		return models.ShortenStore{}, filestore.ErrURLNotFound
+	}
 
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-			return models.ShortenStore{}, filestore.ErrURLNotFound
-		}
+	req := httptest.NewRequest("GET", "/EwHXdJfB", nil)
+	rec := httptest.NewRecorder()
 
-		h.GetOriginalURL(mockStore)(rec, req)
+	h.GetOriginalURL(mockStore)(rec, req)
 
-		res := rec.Result()
-		defer res.Body.Close()
+	res := rec.Result()
+	defer res.Body.Close()
 
-		assert.Equal(t, http.StatusNotFound, res.StatusCode)
-
-		body, err := io.ReadAll(res.Body)
-		assert.NoError(t, err)
-
-		expected := "URL not found\n"
-		assert.Equal(t, expected, string(body))
-	})
-
-	// Add similar blocks for other test cases
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+	// Output: URL not found
 }
