@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Config is a struct that holds the configuration for the application.
 type Config struct {
 	Address     string
 	BaseURL     string
@@ -12,6 +13,7 @@ type Config struct {
 	DatabaseDSN string
 }
 
+// getEnv is a function that retrieves the value of an environment variable.
 func getEnv(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {
@@ -20,6 +22,7 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
+// NewConfig is a function that creates a new Config instance.
 func NewConfig() (*Config, error) {
 	defaultAddress := ":8080"
 	defaultBaseURL := "http://localhost" + defaultAddress
