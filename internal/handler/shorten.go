@@ -264,7 +264,7 @@ func (h *Handler) GetUserURLs(store store.Store, baseURL string) http.HandlerFun
 		}
 
 		if len(urls) == 0 {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
