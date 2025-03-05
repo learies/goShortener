@@ -1,3 +1,4 @@
+// Package contextutils provides utility functions for working with request contexts.
 package contextutils
 
 import (

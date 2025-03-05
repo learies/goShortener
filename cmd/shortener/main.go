@@ -11,19 +11,23 @@ func main() {
 	err := logger.NewLogger("info")
 	if err != nil {
 		logger.Log.Error("Error creating logger", "error", err)
+		return
 	}
 
 	cfg, err := config.NewConfig()
 	if err != nil {
 		logger.Log.Error("Error creating config", "error", err)
+		return
 	}
 
 	application, err := app.NewApp(cfg)
 	if err != nil {
 		logger.Log.Error("Error creating app", "error", err)
+		return
 	}
 
 	if err := application.Run(); err != nil {
 		logger.Log.Error("Error running app", "error", err)
+		return
 	}
 }

@@ -1,3 +1,4 @@
+// Package config provides configuration management functionality for the URL shortener service.
 package config
 
 import (

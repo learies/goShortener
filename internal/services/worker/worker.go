@@ -1,3 +1,4 @@
+// Package worker provides background task processing functionality.
 package worker
 
 import (

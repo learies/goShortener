@@ -190,8 +190,8 @@ func (h *Handler) ShortenLinkBatch(store store.Store, baseURL string, shortener 
 		var batchResponse []models.ShortenBatchResponse
 		var batchShorten []models.ShortenBatchStore
 		for _, request := range batchRequest {
-			shortURL, err := shortener.GenerateShortURL(request.OriginalURL)
-			if err != nil {
+			shortURL, errShortURL := shortener.GenerateShortURL(request.OriginalURL)
+			if errShortURL != nil {
 				http.Error(w, "can't generate short URL", http.StatusInternalServerError)
 				return
 			}

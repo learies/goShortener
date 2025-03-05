@@ -1,3 +1,4 @@
+// Package analyzer provides static analysis tools for the URL shortener service.
 package analyzer
 
 import (

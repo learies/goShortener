@@ -1,3 +1,4 @@
+// Package app provides the main application setup and configuration for the URL shortener service.
 package app
 
 import (

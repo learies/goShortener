@@ -1,3 +1,4 @@
+// Package logger provides logging functionality for the URL shortener service.
 package logger
 
 import (

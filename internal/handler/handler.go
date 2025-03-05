@@ -1,3 +1,4 @@
+// Package handler provides HTTP request handlers for the URL shortener service.
 package handler
 
 // Handler is a struct that represents the handler.

@@ -1,3 +1,4 @@
+// Package router provides HTTP routing functionality for the URL shortener service.
 package router
 
 import (

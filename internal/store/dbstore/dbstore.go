@@ -1,3 +1,4 @@
+// Package dbstore provides database-based storage implementation for the URL shortener service.
 package dbstore
 
 import (

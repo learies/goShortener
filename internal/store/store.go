@@ -1,3 +1,4 @@
+// Package store defines the storage interface and implementations for the URL shortener service.
 package store
 
 import (

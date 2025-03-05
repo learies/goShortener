@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware components for the URL shortener service.
 package middleware
 
 import (
@@ -52,11 +53,12 @@ func JWTMiddleware(next http.Handler) http.Handler {
 
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-			tokenString, err := token.SignedString([]byte("qwerty"))
+			newTokenString, err := token.SignedString([]byte("qwerty"))
 			if err != nil {
 				http.Error(w, "Could not create token", http.StatusInternalServerError)
 				return
 			}
+			tokenString = newTokenString
 
 			// Устанавливаем токен в куки
 			http.SetCookie(w, &http.Cookie{

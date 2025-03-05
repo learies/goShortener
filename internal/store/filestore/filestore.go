@@ -1,3 +1,4 @@
+// Package filestore provides file-based storage implementation for the URL shortener service.
 package filestore
 
 import (
