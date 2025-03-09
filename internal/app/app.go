@@ -2,6 +2,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/learies/goShortener/internal/config"
@@ -42,6 +43,14 @@ func NewApp(cfg *config.Config) (*App, error) {
 
 // Run is a method that starts the server.
 func (a *App) Run() error {
-	logger.Log.Info("Starting server on", "address", a.Config.Address)
+	logger.Log.Info("Starting server on", "address", a.Config.Address, "https", a.Config.EnableHTTPS)
+
+	if a.Config.EnableHTTPS {
+		if a.Config.CertFile == "" || a.Config.KeyFile == "" {
+			return fmt.Errorf("certificate and key files are required for HTTPS")
+		}
+		return http.ListenAndServeTLS(a.Config.Address, a.Config.CertFile, a.Config.KeyFile, a.Router.Mux)
+	}
+
 	return http.ListenAndServe(a.Config.Address, a.Router.Mux)
 }
