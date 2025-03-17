@@ -36,36 +36,89 @@ func NewConfig() (*Config, error) {
 	var defaultCertFile string
 	var defaultKeyFile string
 
-	envAddress := getEnv("SERVER_ADDRESS", defaultAddress)
-	envBaseURL := getEnv("BASE_URL", defaultBaseURL)
-	envFilePath := getEnv("FILE_STORAGE_PATH", defaultFilePath)
-	envDatabaseDSN := getEnv("DATABASE_DSN", defaultDatabaseDSN)
-	envEnableHTTPS := getEnv("ENABLE_HTTPS", "false")
-	envCertFile := getEnv("CERT_FILE", defaultCertFile)
-	envKeyFile := getEnv("KEY_FILE", defaultKeyFile)
+	// Определяем все флаги
+	configPath := flag.String("c", getEnv("CONFIG", ""), "path to configuration file")
+	address := flag.String("a", "", "address to start the HTTP server")
+	baseURL := flag.String("b", "", "base URL for shortened URLs")
+	filePath := flag.String("f", "", "path to the file for storing URL data")
+	databaseDSN := flag.String("d", "", "database DSN")
+	enableHTTPS := flag.Bool("s", false, "enable HTTPS server")
+	certFile := flag.String("cert", "", "path to SSL certificate file")
+	keyFile := flag.String("key", "", "path to SSL private key file")
 
-	address := flag.String("a", envAddress, "address to start the HTTP server")
-	baseURL := flag.String("b", envBaseURL, "base URL for shortened URLs")
-	filePath := flag.String("f", envFilePath, "path to the file for storing URL data")
-	databaseDSN := flag.String("d", envDatabaseDSN, "database DSN")
-	enableHTTPS := flag.Bool("s", envEnableHTTPS == "true", "enable HTTPS server")
-	certFile := flag.String("cert", envCertFile, "path to SSL certificate file")
-	keyFile := flag.String("key", envKeyFile, "path to SSL private key file")
-
+	// Парсим флаги
 	flag.Parse()
 
-	// Update baseURL scheme if HTTPS is enabled
-	if *enableHTTPS && strings.HasPrefix(*baseURL, "http://") {
-		*baseURL = "https://" + strings.TrimPrefix(*baseURL, "http://")
+	// Загружаем конфигурацию из JSON файла
+	jsonConfig, err := loadJSONConfig(*configPath)
+	if err != nil {
+		return nil, err
 	}
 
-	return &Config{
-		Address:     *address,
-		BaseURL:     *baseURL,
-		FilePath:    *filePath,
-		DatabaseDSN: *databaseDSN,
-		EnableHTTPS: *enableHTTPS,
-		CertFile:    *certFile,
-		KeyFile:     *keyFile,
-	}, nil
+	// Создаем базовую конфигурацию с дефолтными значениями
+	cfg := &Config{
+		Address:     defaultAddress,
+		BaseURL:     defaultBaseURL,
+		FilePath:    defaultFilePath,
+		DatabaseDSN: defaultDatabaseDSN,
+		EnableHTTPS: false,
+		CertFile:    defaultCertFile,
+		KeyFile:     defaultKeyFile,
+	}
+
+	// Применяем значения из JSON конфигурации (низший приоритет)
+	cfg.mergeConfig(jsonConfig)
+
+	// Применяем значения из переменных окружения (средний приоритет)
+	if envAddress := getEnv("SERVER_ADDRESS", ""); envAddress != "" {
+		cfg.Address = envAddress
+	}
+	if envBaseURL := getEnv("BASE_URL", ""); envBaseURL != "" {
+		cfg.BaseURL = envBaseURL
+	}
+	if envFilePath := getEnv("FILE_STORAGE_PATH", ""); envFilePath != "" {
+		cfg.FilePath = envFilePath
+	}
+	if envDatabaseDSN := getEnv("DATABASE_DSN", ""); envDatabaseDSN != "" {
+		cfg.DatabaseDSN = envDatabaseDSN
+	}
+	if envEnableHTTPS := getEnv("ENABLE_HTTPS", ""); envEnableHTTPS == "true" {
+		cfg.EnableHTTPS = true
+	}
+	if envCertFile := getEnv("CERT_FILE", ""); envCertFile != "" {
+		cfg.CertFile = envCertFile
+	}
+	if envKeyFile := getEnv("KEY_FILE", ""); envKeyFile != "" {
+		cfg.KeyFile = envKeyFile
+	}
+
+	// Применяем значения из флагов (высший приоритет)
+	if *address != "" {
+		cfg.Address = *address
+	}
+	if *baseURL != "" {
+		cfg.BaseURL = *baseURL
+	}
+	if *filePath != "" {
+		cfg.FilePath = *filePath
+	}
+	if *databaseDSN != "" {
+		cfg.DatabaseDSN = *databaseDSN
+	}
+	if *enableHTTPS {
+		cfg.EnableHTTPS = true
+	}
+	if *certFile != "" {
+		cfg.CertFile = *certFile
+	}
+	if *keyFile != "" {
+		cfg.KeyFile = *keyFile
+	}
+
+	// Update baseURL scheme if HTTPS is enabled
+	if cfg.EnableHTTPS && strings.HasPrefix(cfg.BaseURL, "http://") {
+		cfg.BaseURL = "https://" + strings.TrimPrefix(cfg.BaseURL, "http://")
+	}
+
+	return cfg, nil
 }
