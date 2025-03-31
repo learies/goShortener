@@ -153,3 +153,22 @@ func (fs *FileStore) Ping() error {
 	err := errors.New("unable to access the store")
 	return err
 }
+
+// GetStats returns the number of URLs and unique users in the file store
+func (fs *FileStore) GetStats(ctx context.Context) (int, int, error) {
+	fs.mu.RLock()
+	defer fs.mu.RUnlock()
+
+	if fs.FilePath != "" {
+		if err := fs.LoadFromFile(); err != nil {
+			logger.Log.Error("Failed to load from file", "error", err)
+			return 0, 0, err
+		}
+	}
+
+	urlsCount := len(fs.URLMapping)
+	// Since file store doesn't track users, we'll return 0 for users count
+	usersCount := 0
+
+	return urlsCount, usersCount, nil
+}

@@ -144,3 +144,22 @@ func (d *DBStore) DeleteUserURLs(ctx context.Context, userShortURLs <-chan model
 
 	return nil
 }
+
+// GetStats returns the number of URLs and unique users in the database
+func (d *DBStore) GetStats(ctx context.Context) (int, int, error) {
+	var urlsCount, usersCount int
+
+	// Get total number of URLs
+	err := d.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM urls WHERE is_deleted = false`).Scan(&urlsCount)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Get number of unique users
+	err = d.DB.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM urls WHERE is_deleted = false`).Scan(&usersCount)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return urlsCount, usersCount, nil
+}

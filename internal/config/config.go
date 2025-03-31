@@ -9,13 +9,14 @@ import (
 
 // Config is a struct that holds the configuration for the application.
 type Config struct {
-	Address     string
-	BaseURL     string
-	FilePath    string
-	DatabaseDSN string
-	EnableHTTPS bool
-	CertFile    string
-	KeyFile     string
+	Address       string
+	BaseURL       string
+	FilePath      string
+	DatabaseDSN   string
+	EnableHTTPS   bool
+	CertFile      string
+	KeyFile       string
+	TrustedSubnet string
 }
 
 // getEnv is a function that retrieves the value of an environment variable.
@@ -35,6 +36,7 @@ func NewConfig() (*Config, error) {
 	var defaultDatabaseDSN string
 	var defaultCertFile string
 	var defaultKeyFile string
+	var defaultTrustedSubnet string
 
 	// Определяем все флаги
 	configPath := flag.String("c", getEnv("CONFIG", ""), "path to configuration file")
@@ -45,6 +47,7 @@ func NewConfig() (*Config, error) {
 	enableHTTPS := flag.Bool("s", false, "enable HTTPS server")
 	certFile := flag.String("cert", "", "path to SSL certificate file")
 	keyFile := flag.String("key", "", "path to SSL private key file")
+	trustedSubnet := flag.String("t", "", "trusted subnet in CIDR format")
 
 	// Парсим флаги
 	flag.Parse()
@@ -57,13 +60,14 @@ func NewConfig() (*Config, error) {
 
 	// Создаем базовую конфигурацию с дефолтными значениями
 	cfg := &Config{
-		Address:     defaultAddress,
-		BaseURL:     defaultBaseURL,
-		FilePath:    defaultFilePath,
-		DatabaseDSN: defaultDatabaseDSN,
-		EnableHTTPS: false,
-		CertFile:    defaultCertFile,
-		KeyFile:     defaultKeyFile,
+		Address:       defaultAddress,
+		BaseURL:       defaultBaseURL,
+		FilePath:      defaultFilePath,
+		DatabaseDSN:   defaultDatabaseDSN,
+		EnableHTTPS:   false,
+		CertFile:      defaultCertFile,
+		KeyFile:       defaultKeyFile,
+		TrustedSubnet: defaultTrustedSubnet,
 	}
 
 	// Применяем значения из JSON конфигурации (низший приоритет)
@@ -91,6 +95,9 @@ func NewConfig() (*Config, error) {
 	if envKeyFile := getEnv("KEY_FILE", ""); envKeyFile != "" {
 		cfg.KeyFile = envKeyFile
 	}
+	if envTrustedSubnet := getEnv("TRUSTED_SUBNET", ""); envTrustedSubnet != "" {
+		cfg.TrustedSubnet = envTrustedSubnet
+	}
 
 	// Применяем значения из флагов (высший приоритет)
 	if *address != "" {
@@ -113,6 +120,9 @@ func NewConfig() (*Config, error) {
 	}
 	if *keyFile != "" {
 		cfg.KeyFile = *keyFile
+	}
+	if *trustedSubnet != "" {
+		cfg.TrustedSubnet = *trustedSubnet
 	}
 
 	// Update baseURL scheme if HTTPS is enabled

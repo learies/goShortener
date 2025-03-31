@@ -45,6 +45,7 @@ func (r *Router) Routes(cfg *config.Config, store store.Store, urlShortener serv
 	routes.Post("/api/shorten/batch", handler.ShortenLinkBatch(store, cfg.BaseURL, urlShortener))
 	routes.Get("/api/user/urls", handler.GetUserURLs(store, cfg.BaseURL))
 	routes.Delete("/api/user/urls", handler.DeleteUserURLs(store))
+	routes.Get("/api/internal/stats", handler.GetStats(store, cfg.TrustedSubnet))
 	routes.MethodNotAllowed(methodNotAllowedHandler)
 
 	routes.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))

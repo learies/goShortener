@@ -47,6 +47,10 @@ func (m *MockStore) Ping() error {
 	return nil
 }
 
+func (m *MockStore) GetStats(ctx context.Context) (int, int, error) {
+	return 0, 0, nil
+}
+
 func init() {
 	err := logger.NewLogger("info")
 	if err != nil {

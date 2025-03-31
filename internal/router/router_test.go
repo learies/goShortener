@@ -99,6 +99,26 @@ func (m *MockStore) Ping() error {
 	return nil
 }
 
+func (m *MockStore) GetStats(_ context.Context) (int, int, error) {
+	// Count unique users
+	users := make(map[uuid.UUID]struct{})
+	for _, record := range m.urls {
+		if !record.Deleted {
+			users[record.UserID] = struct{}{}
+		}
+	}
+
+	// Count non-deleted URLs
+	urlsCount := 0
+	for _, record := range m.urls {
+		if !record.Deleted {
+			urlsCount++
+		}
+	}
+
+	return urlsCount, len(users), nil
+}
+
 // MockShortener реализует интерфейс services.Shortener для тестирования
 type MockShortener struct{}
 

@@ -21,6 +21,7 @@ type Store interface {
 	GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
 	Ping() error
+	GetStats(ctx context.Context) (int, int, error)
 }
 
 // StoreConstructor определяет функцию создания хранилища
