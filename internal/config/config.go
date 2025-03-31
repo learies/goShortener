@@ -17,6 +17,9 @@ type Config struct {
 	CertFile      string
 	KeyFile       string
 	TrustedSubnet string
+	// gRPC server configuration
+	GRPCAddress string
+	EnableGRPC  bool
 }
 
 // getEnv is a function that retrieves the value of an environment variable.
@@ -32,6 +35,7 @@ func getEnv(key, defaultValue string) string {
 func NewConfig() (*Config, error) {
 	defaultAddress := ":8080"
 	defaultBaseURL := "http://localhost" + defaultAddress
+	defaultGRPCAddress := ":50051"
 	var defaultFilePath string
 	var defaultDatabaseDSN string
 	var defaultCertFile string
@@ -48,6 +52,9 @@ func NewConfig() (*Config, error) {
 	certFile := flag.String("cert", "", "path to SSL certificate file")
 	keyFile := flag.String("key", "", "path to SSL private key file")
 	trustedSubnet := flag.String("t", "", "trusted subnet in CIDR format")
+	// gRPC flags
+	grpcAddress := flag.String("grpc-addr", "", "address to start the gRPC server")
+	enableGRPC := flag.Bool("grpc", false, "enable gRPC server")
 
 	// Парсим флаги
 	flag.Parse()
@@ -68,6 +75,8 @@ func NewConfig() (*Config, error) {
 		CertFile:      defaultCertFile,
 		KeyFile:       defaultKeyFile,
 		TrustedSubnet: defaultTrustedSubnet,
+		GRPCAddress:   defaultGRPCAddress,
+		EnableGRPC:    false,
 	}
 
 	// Применяем значения из JSON конфигурации (низший приоритет)
@@ -98,6 +107,13 @@ func NewConfig() (*Config, error) {
 	if envTrustedSubnet := getEnv("TRUSTED_SUBNET", ""); envTrustedSubnet != "" {
 		cfg.TrustedSubnet = envTrustedSubnet
 	}
+	// gRPC environment variables
+	if envGRPCAddress := getEnv("GRPC_SERVER_ADDRESS", ""); envGRPCAddress != "" {
+		cfg.GRPCAddress = envGRPCAddress
+	}
+	if envEnableGRPC := getEnv("ENABLE_GRPC", ""); envEnableGRPC == "true" {
+		cfg.EnableGRPC = true
+	}
 
 	// Применяем значения из флагов (высший приоритет)
 	if *address != "" {
@@ -123,6 +139,13 @@ func NewConfig() (*Config, error) {
 	}
 	if *trustedSubnet != "" {
 		cfg.TrustedSubnet = *trustedSubnet
+	}
+	// gRPC flags
+	if *grpcAddress != "" {
+		cfg.GRPCAddress = *grpcAddress
+	}
+	if *enableGRPC {
+		cfg.EnableGRPC = true
 	}
 
 	// Update baseURL scheme if HTTPS is enabled
