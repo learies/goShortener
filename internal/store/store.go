@@ -1,3 +1,4 @@
+// Package store defines the storage interface and implementations for the URL shortener service.
 package store
 
 import (
@@ -20,10 +21,14 @@ type Store interface {
 	GetUserURLs(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLs(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
 	Ping() error
+	GetStats(ctx context.Context) (int, int, error)
 }
 
-// NewStore is a function that creates a new store.
-func NewStore(cfg config.Config) (Store, error) {
+// StoreConstructor определяет функцию создания хранилища
+type StoreConstructor func(cfg config.Config) (Store, error)
+
+// DefaultStoreConstructor реализует создание хранилища по умолчанию
+func DefaultStoreConstructor(cfg config.Config) (Store, error) {
 	if cfg.DatabaseDSN != "" {
 		db, err := database.Connect(cfg.DatabaseDSN)
 		if err != nil {
@@ -39,3 +44,6 @@ func NewStore(cfg config.Config) (Store, error) {
 
 	return store, nil
 }
+
+// NewStore хранит текущую функцию создания хранилища
+var NewStore StoreConstructor = DefaultStoreConstructor

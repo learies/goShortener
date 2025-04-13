@@ -1,3 +1,4 @@
+// Package models defines the data structures used throughout the URL shortener service.
 package models
 
 import (

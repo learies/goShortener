@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware components for the URL shortener service.
 package middleware
 
 import (

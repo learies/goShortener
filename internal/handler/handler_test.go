@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,9 +16,15 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/learies/goShortener/internal/config/contextutils"
+	"github.com/learies/goShortener/internal/config/logger"
 	"github.com/learies/goShortener/internal/models"
 	"github.com/learies/goShortener/internal/store/filestore"
 )
+
+func init() {
+	// Инициализация логгера для тестов
+	logger.Log = slog.New(slog.NewTextHandler(os.Stdout, nil))
+}
 
 type MockShortener struct{}
 
@@ -27,9 +35,11 @@ func (m *MockShortener) GenerateShortURL(originalURL string) (string, error) {
 type MockStore struct {
 	GetFunc            func(ctx context.Context, shortURL string) (models.ShortenStore, error)
 	AddFunc            func(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error
+	AddBatchFunc       func(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error
 	GetUserURLsFunc    func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error)
 	DeleteUserURLsFunc func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error
 	PingFunc           func() error
+	GetStatsFunc       func(ctx context.Context) (int, int, error)
 }
 
 func (m *MockStore) Add(ctx context.Context, shortURL, originalURL string, userID uuid.UUID) error {
@@ -44,6 +54,9 @@ func (m *MockStore) Get(ctx context.Context, shortURL string) (models.ShortenSto
 }
 
 func (m *MockStore) AddBatch(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {
+	if m.AddBatchFunc != nil {
+		return m.AddBatchFunc(ctx, batchRequest, userID)
+	}
 	return nil
 }
 
@@ -63,6 +76,13 @@ func (m *MockStore) Ping() error {
 		return m.PingFunc()
 	}
 	return nil
+}
+
+func (m *MockStore) GetStats(ctx context.Context) (int, int, error) {
+	if m.GetStatsFunc != nil {
+		return m.GetStatsFunc(ctx)
+	}
+	return 0, 0, nil
 }
 
 func TestMainHandler(t *testing.T) {
@@ -262,14 +282,21 @@ func TestMainHandler(t *testing.T) {
 	})
 
 	t.Run("ShortenLinkBatch", func(t *testing.T) {
-		reqBody := `[{"correlation_id":"123","original_url":"https://practicum.yandex.ru/"}]`
-		req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(reqBody))
+		reqBody := `[
+			{"correlation_id": "1", "original_url": "https://practicum.yandex.ru/"},
+			{"correlation_id": "2", "original_url": "https://yandex.ru/"}
+		]`
+		req := httptest.NewRequest(http.MethodPost, "/shorten/batch", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		userID := uuid.New()
 		ctx := contextutils.WithUserID(req.Context(), userID)
 		req = req.WithContext(ctx)
+
+		mockStore.AddBatchFunc = func(ctx context.Context, batchRequest []models.ShortenBatchStore, userID uuid.UUID) error {
+			return nil
+		}
 
 		handler.ShortenLinkBatch(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
 
@@ -284,12 +311,33 @@ func TestMainHandler(t *testing.T) {
 		body, err := io.ReadAll(result.Body)
 		assert.NoError(t, err)
 
-		expected := `[{"correlation_id":"123","short_url":"http://localhost:8080/EwHXdJfB"}]`
+		expected := `[
+			{"correlation_id": "1", "short_url": "http://localhost:8080/EwHXdJfB"},
+			{"correlation_id": "2", "short_url": "http://localhost:8080/EwHXdJfB"}
+		]`
 		assert.JSONEq(t, expected, string(body))
 	})
 
+	t.Run("ShortenLinkBatchBadRequest", func(t *testing.T) {
+		reqBody := `[{ bad json }]`
+		req := httptest.NewRequest(http.MethodPost, "/shorten/batch", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		handler.ShortenLinkBatch(mockStore, "http://localhost:8080", mockShortener)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
+	})
+
 	t.Run("GetUserURLs", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
+		req := httptest.NewRequest(http.MethodGet, "/user/urls", nil)
 		recorder := httptest.NewRecorder()
 
 		userID := uuid.New()
@@ -297,7 +345,12 @@ func TestMainHandler(t *testing.T) {
 		req = req.WithContext(ctx)
 
 		mockStore.GetUserURLsFunc = func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
-			return []models.UserURLResponse{{ShortURL: "EwHXdJfB", OriginalURL: "https://practicum.yandex.ru/"}}, nil
+			return []models.UserURLResponse{
+				{
+					ShortURL:    "EwHXdJfB",
+					OriginalURL: "https://practicum.yandex.ru/",
+				},
+			}, nil
 		}
 
 		handler.GetUserURLs(mockStore, "http://localhost:8080")(recorder, req)
@@ -313,13 +366,35 @@ func TestMainHandler(t *testing.T) {
 		body, err := io.ReadAll(result.Body)
 		assert.NoError(t, err)
 
-		expected := `[{"short_url":"http://localhost:8080/EwHXdJfB","original_url":"https://practicum.yandex.ru/"}]`
+		expected := `[
+			{"short_url": "http://localhost:8080/EwHXdJfB", "original_url": "https://practicum.yandex.ru/"}
+		]`
 		assert.JSONEq(t, expected, string(body))
 	})
 
+	t.Run("GetUserURLsEmpty", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/user/urls", nil)
+		recorder := httptest.NewRecorder()
+
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
+
+		mockStore.GetUserURLsFunc = func(ctx context.Context, userID uuid.UUID) ([]models.UserURLResponse, error) {
+			return []models.UserURLResponse{}, nil
+		}
+
+		handler.GetUserURLs(mockStore, "http://localhost:8080")(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusNoContent, result.StatusCode)
+	})
+
 	t.Run("DeleteUserURLs", func(t *testing.T) {
-		reqBody := `["EwHXdJfB"]`
-		req := httptest.NewRequest(http.MethodDelete, "/api/user/urls", strings.NewReader(reqBody))
+		reqBody := `["EwHXdJfB", "AbCdEfGh"]`
+		req := httptest.NewRequest(http.MethodDelete, "/user/urls", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
@@ -327,12 +402,9 @@ func TestMainHandler(t *testing.T) {
 		ctx := contextutils.WithUserID(req.Context(), userID)
 		req = req.WithContext(ctx)
 
-		userShortURLs := []models.UserShortURL{{ShortURL: "EwHXdJfB"}}
-		userShortURLsChan := make(chan models.UserShortURL, len(userShortURLs))
-		for _, url := range userShortURLs {
-			userShortURLsChan <- url
+		mockStore.DeleteUserURLsFunc = func(ctx context.Context, userShortURLs <-chan models.UserShortURL) error {
+			return nil
 		}
-		close(userShortURLsChan)
 
 		handler.DeleteUserURLs(mockStore)(recorder, req)
 
@@ -342,26 +414,25 @@ func TestMainHandler(t *testing.T) {
 		assert.Equal(t, http.StatusAccepted, result.StatusCode)
 	})
 
-	t.Run("GetOriginalURLGone", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/EwHXdJfB", nil)
+	t.Run("DeleteUserURLsBadRequest", func(t *testing.T) {
+		reqBody := `{ bad json }`
+		req := httptest.NewRequest(http.MethodDelete, "/user/urls", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
-		mockStore.GetFunc = func(ctx context.Context, shortURL string) (models.ShortenStore, error) {
-			return models.ShortenStore{
-				OriginalURL: "https://practicum.yandex.ru/",
-				Deleted:     true,
-			}, nil
-		}
+		userID := uuid.New()
+		ctx := contextutils.WithUserID(req.Context(), userID)
+		req = req.WithContext(ctx)
 
-		handler.GetOriginalURL(mockStore)(recorder, req)
+		handler.DeleteUserURLs(mockStore)(recorder, req)
 
 		result := recorder.Result()
 		defer result.Body.Close()
 
-		assert.Equal(t, http.StatusGone, result.StatusCode)
+		assert.Equal(t, http.StatusBadRequest, result.StatusCode)
 	})
 
-	t.Run("Ping", func(t *testing.T) {
+	t.Run("PingHandler", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 		recorder := httptest.NewRecorder()
 
@@ -375,6 +446,28 @@ func TestMainHandler(t *testing.T) {
 		defer result.Body.Close()
 
 		assert.Equal(t, http.StatusOK, result.StatusCode)
+
+		body, err := io.ReadAll(result.Body)
+		assert.NoError(t, err)
+
+		expected := "Successfully connected to the store"
+		assert.Equal(t, expected, string(body))
+	})
+
+	t.Run("PingHandlerError", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+		recorder := httptest.NewRecorder()
+
+		mockStore.PingFunc = func() error {
+			return fmt.Errorf("store error")
+		}
+
+		handler.PingHandler(mockStore)(recorder, req)
+
+		result := recorder.Result()
+		defer result.Body.Close()
+
+		assert.Equal(t, http.StatusInternalServerError, result.StatusCode)
 	})
 }
 
@@ -432,5 +525,95 @@ func BenchmarkShortenLink(b *testing.B) {
 		req = req.WithContext(ctx)
 
 		handler.ShortenLink(mockStore, baseURL, mockShortener)(recorder, req)
+	}
+}
+
+func TestGetStats(t *testing.T) {
+	tests := []struct {
+		name           string
+		trustedSubnet  string
+		clientIP       string
+		urlsCount      int
+		usersCount     int
+		storeError     error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "successful request",
+			trustedSubnet:  "192.168.1.0/24",
+			clientIP:       "192.168.1.100",
+			urlsCount:      10,
+			usersCount:     5,
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"urls":10,"users":5}` + "\n",
+		},
+		{
+			name:           "empty trusted subnet",
+			trustedSubnet:  "",
+			clientIP:       "192.168.1.100",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Access denied\n",
+		},
+		{
+			name:           "missing X-Real-IP header",
+			trustedSubnet:  "192.168.1.0/24",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Missing X-Real-IP header\n",
+		},
+		{
+			name:           "invalid client IP",
+			trustedSubnet:  "192.168.1.0/24",
+			clientIP:       "invalid-ip",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Invalid client IP\n",
+		},
+		{
+			name:           "IP not in trusted subnet",
+			trustedSubnet:  "192.168.1.0/24",
+			clientIP:       "10.0.0.1",
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Access denied\n",
+		},
+		{
+			name:           "store error",
+			trustedSubnet:  "192.168.1.0/24",
+			clientIP:       "192.168.1.100",
+			storeError:     assert.AnError,
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to get stats\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock store
+			mockStore := &MockStore{
+				GetStatsFunc: func(ctx context.Context) (int, int, error) {
+					return tt.urlsCount, tt.usersCount, tt.storeError
+				},
+			}
+
+			// Create request
+			req := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+			if tt.clientIP != "" {
+				req.Header.Set("X-Real-IP", tt.clientIP)
+			}
+
+			// Create response recorder
+			rr := httptest.NewRecorder()
+
+			// Create handler
+			handler := GetStats(mockStore, tt.trustedSubnet)
+
+			// Call handler
+			handler.ServeHTTP(rr, req)
+
+			// Check status code
+			assert.Equal(t, tt.expectedStatus, rr.Code)
+
+			// Check response body
+			assert.Equal(t, tt.expectedBody, rr.Body.String())
+		})
 	}
 }
